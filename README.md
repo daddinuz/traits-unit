@@ -1,4 +1,4 @@
 Traits Unit
 ===========
 
-An unittest framework written in C99.
+A unittest framework written in C99.
