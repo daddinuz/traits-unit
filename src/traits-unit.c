@@ -38,11 +38,13 @@ extern traits_unit_subject_t traits_unit_subject;
  * Implements default fixtures from header file
  */
 SetupDefine(DefaultSetup) {
+    printf(" <DefaultSetup> ");
     return NULL;
 }
 
 TeardownDefine(DefaultTeardown) {
     (void) traits_context;
+    printf(" <DefaultTeardown> ");
 }
 
 FixtureDefine(DefaultFixture, DefaultSetup, DefaultTeardown);
@@ -158,6 +160,9 @@ int traits_unit_run_feature(traits_unit_feature_t *feature) {
     pid_t pid;
     int fd, pipe_fd[2], pid_status;
 
+    /* Setup context */
+    void *context = feature->fixture->setup();
+
     /* Flush TRAITS_UNIT_OUTPUT_STREAM */
     fflush(TRAITS_UNIT_OUTPUT_STREAM);
 
@@ -182,9 +187,7 @@ int traits_unit_run_feature(traits_unit_feature_t *feature) {
         fd = pipe_fd[1];
 
         /* Run feature */
-        void *context = feature->fixture->setup();
         feature->feature(context);
-        feature->fixture->teardown(context);
 
         /* Close fd */
         close(fd);
@@ -207,6 +210,9 @@ int traits_unit_run_feature(traits_unit_feature_t *feature) {
         /* Close fd */
         close(fd);
     }
+
+    /* Teardown context */
+    feature->fixture->teardown(context);
 
     /* Flush STDOUT */
     fflush(TRAITS_UNIT_OUTPUT_STREAM);

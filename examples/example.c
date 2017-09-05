@@ -86,6 +86,7 @@ FeatureDefine(MySubjectTraitXFeature1) {
     (void) traits_context;
     printf(" <MySubjectTraitXFeature1> ");
     assert_true(false);
+    printf(" <MySubjectTraitXFeature1.IShouldNotAppear>");
 }
 
 FeatureDefine(MySubjectTraitXFeature2) {
@@ -102,6 +103,7 @@ FeatureDefine(MySubjectTraitYFeature1) {
     (void) traits_context;
     printf(" <MySubjectTraitYFeature1> ");
     assert_true(false);
+    printf(" <MySubjectTraitYFeature1.IShouldNotAppear>");
 }
 
 FeatureDefine(MySubjectTraitYFeature2) {
