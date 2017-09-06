@@ -13,6 +13,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <assert.h>
 #include "traits-unit.h"
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -27,6 +28,7 @@
  * Some constants
  */
 #define TRAITS_UNIT_OUTPUT_STREAM                       stdout
+#define TRAITS_UNIT_BUFFER_CAPACITY                     (2 << 8)
 #define TRAITS_UNIT_INDENTATION_STEP                    2
 
 /*
@@ -50,16 +52,31 @@ TeardownDefine(DefaultTeardown) {
 FixtureDefine(DefaultFixture, DefaultSetup, DefaultTeardown);
 
 /*
- * Internal functions declarations
+ * Internal declarations
  */
-static void
-_traits_unit_panic(size_t line, const char *file, const char *fmt, ...) TRAITS_UNIT_ATTRIBUTE_FORMAT_NORETURN(3, 4);
-static void
-traits_unit_print(size_t indent, const char *fmt, ...) TRAITS_UNIT_ATTRIBUTE_FORMAT(2, 3);
-static void
-traits_unit_echo(int fd);
-static int
-traits_unit_run_feature(traits_unit_feature_t *feature);
+typedef struct traits_unit_buffer_t {
+    size_t _index;
+    size_t _capacity;
+    char *_content;
+} traits_unit_buffer_t;
+
+static traits_unit_buffer_t *traits_unit_buffer_new(size_t capacity);
+
+static void traits_unit_buffer_read(traits_unit_buffer_t *buffer, int fd);
+
+static char *traits_unit_buffer_get(traits_unit_buffer_t *buffer);
+
+static void traits_unit_buffer_clear(traits_unit_buffer_t *buffer);
+
+static void traits_unit_buffer_delete(traits_unit_buffer_t **buffer);
+
+static void _traits_unit_panic(size_t line, const char *file, const char *fmt, ...)
+TRAITS_UNIT_ATTRIBUTE_FORMAT_NORETURN(3, 4);
+
+static void traits_unit_print(size_t indent, const char *fmt, ...)
+TRAITS_UNIT_ATTRIBUTE_FORMAT(2, 3);
+
+static int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
 
 /*
  * Macro helpers
@@ -75,6 +92,7 @@ int main(int argc, char *argv[]) {
     size_t indentation_level = 0;
     traits_unit_trait_t *trait = NULL;
     traits_unit_feature_t *feature = NULL;
+    traits_unit_buffer_t *buffer = traits_unit_buffer_new(TRAITS_UNIT_BUFFER_CAPACITY);
     size_t counter_succeed = 0, counter_skipped = 0, counter_failed = 0, counter_todo = 0, counter_all = 0;
 
     traits_unit_print(indentation_level, "Describing: %s\n", traits_unit_subject.subject);
@@ -86,12 +104,13 @@ int main(int argc, char *argv[]) {
             counter_all++;
             traits_unit_print(indentation_level, "Feature: %s... ", feature->feature_name);
             if (feature->action == TRAITS_UNIT_FEATURE_RUN) {
-                if (traits_unit_run_feature(feature) == EXIT_SUCCESS) {
+                traits_unit_buffer_clear(buffer);
+                if (traits_unit_run_feature(feature, buffer) == EXIT_SUCCESS) {
                     counter_succeed++;
                     traits_unit_print(0, "succeed\n");
                 } else {
                     counter_failed++;
-                    traits_unit_print(0, "failed\n");
+                    traits_unit_print(0, "failed\n\n%s\n", traits_unit_buffer_get(buffer));
                 }
             } else if (feature->action == TRAITS_UNIT_FEATURE_SKIP) {
                 counter_skipped++;
@@ -113,12 +132,66 @@ int main(int argc, char *argv[]) {
     traits_unit_print(indentation_level, "   Todo: %zu\n", counter_todo);
     traits_unit_print(indentation_level, "    All: %zu\n", counter_all);
 
+    traits_unit_buffer_delete(&buffer);
     return (counter_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 /*
- * Internal functions implementations
+ * Internal implementations
  */
+traits_unit_buffer_t *traits_unit_buffer_new(size_t capacity) {
+    traits_unit_buffer_t *self = malloc(sizeof(*self));
+    if (!self) {
+        traits_unit_panic("%s\n", "Out of memory.");
+    }
+    self->_content = malloc(capacity + 1);
+    if (!self->_content) {
+        traits_unit_panic("%s\n", "Out of memory.");
+    }
+    self->_index = 0;
+    self->_capacity = capacity;
+    self->_content[capacity] = 0;
+    return self;
+}
+
+void traits_unit_buffer_read(traits_unit_buffer_t *buffer, int fd) {
+    assert(buffer);
+    FILE *stream = fdopen(fd, "r");
+
+    /* Open fd */
+    if (!stream) {
+        traits_unit_panic("%s\n", "Unable to open file.");
+    }
+
+    /* Read from fd and write to buffer */
+    buffer->_index += fread(
+            buffer->_content + buffer->_index,
+            sizeof(buffer->_content[0]),
+            buffer->_capacity - buffer->_index,
+            stream
+    );
+
+    /* Close the stream */
+    fclose(stream);
+}
+
+char *traits_unit_buffer_get(traits_unit_buffer_t *buffer) {
+    assert(buffer);
+    return buffer->_content;
+}
+
+void traits_unit_buffer_clear(traits_unit_buffer_t *buffer) {
+    assert(buffer);
+    buffer->_index = 0;
+    buffer->_content[0] = 0;
+}
+
+void traits_unit_buffer_delete(traits_unit_buffer_t **buffer) {
+    assert(buffer && *buffer);
+    free((*buffer)->_content);
+    free(*buffer);
+}
+
 void _traits_unit_panic(size_t line, const char *file, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -137,26 +210,7 @@ void traits_unit_print(size_t indent, const char *fmt, ...) {
     va_end(args);
 }
 
-void traits_unit_echo(int fd) {
-    char buffer[128];
-    const size_t size = sizeof(buffer) / sizeof(buffer[0]);
-    FILE *stream = NULL;
-
-    /* Open fd */
-    if (!(stream = fdopen(fd, "r"))) {
-        traits_unit_panic("%s\n", "Unable to open file.");
-    }
-
-    /* Read from fd and write to TRAITS_UNIT_OUTPUT_STREAM */
-    while (fgets(buffer, size, stream) != NULL && !feof(stream)) {
-        traits_unit_print(0, "%s", buffer);
-    }
-
-    /* Close the stream */
-    fclose(stream);
-}
-
-int traits_unit_run_feature(traits_unit_feature_t *feature) {
+int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
     pid_t pid;
     int fd, pipe_fd[2], pid_status;
 
@@ -177,14 +231,14 @@ int traits_unit_run_feature(traits_unit_feature_t *feature) {
     }
 
     if (pid == 0) { /* We are in child process */
-        /* Redirect STDERR to STDOUT */
-        dup2(STDOUT_FILENO, STDERR_FILENO);
-
         /* Close read end of pipe */
         close(pipe_fd[0]);
 
         /* Get write end of pipe */
         fd = pipe_fd[1];
+
+        /* Redirect STDERR to pipe*/
+        dup2(fd, STDERR_FILENO);
 
         /* Run feature */
         feature->feature(context);
@@ -202,7 +256,7 @@ int traits_unit_run_feature(traits_unit_feature_t *feature) {
         fd = pipe_fd[0];
 
         /* Redirect the children output to TRAITS_UNIT_OUTPUT_STREAM */
-        traits_unit_echo(fd);
+        traits_unit_buffer_read(buffer, fd);
 
         /* Wait for children */
         wait(&pid_status);
@@ -214,7 +268,7 @@ int traits_unit_run_feature(traits_unit_feature_t *feature) {
     /* Teardown context */
     feature->fixture->teardown(context);
 
-    /* Flush STDOUT */
+    /* Flush TRAITS_UNIT_OUTPUT_STREAM */
     fflush(TRAITS_UNIT_OUTPUT_STREAM);
     return pid_status;
 }
