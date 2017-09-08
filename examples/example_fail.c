@@ -6,6 +6,7 @@
  * Date:   September 02, 2017 
  */
 
+#include <stdio.h>
 #include "traits.h"
 #include "traits-unit.h"
 
