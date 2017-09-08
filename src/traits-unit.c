@@ -11,9 +11,10 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/wait.h>
 #include <assert.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <sys/wait.h>
 #include "traits-unit.h"
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -54,6 +55,9 @@ FixtureDefine(DefaultFixture, DefaultSetup, DefaultTeardown);
 /*
  * Internal declarations
  */
+static void *traits_unit_shared_malloc(size_t size);
+static void traits_unit_shared_free(void *address, size_t size);
+
 typedef struct traits_unit_buffer_t {
     size_t _index;
     size_t _capacity;
@@ -139,12 +143,38 @@ int main(int argc, char *argv[]) {
 /*
  * Internal implementations
  */
+void *traits_unit_shared_malloc(size_t size) {
+    /* Our memory will be readable and writable */
+    int protection = PROT_READ | PROT_WRITE;
+
+    /*
+     * The buffer will be shared (meaning other processes can access it), but
+     * anonymous (meaning third-party processes cannot obtain an address for it),
+     * so only this process and its children will be able to use it.
+     */
+    int visibility = MAP_ANONYMOUS | MAP_SHARED;
+
+    /* Perform memory mapping */
+    void *memory = mmap(NULL, size, protection, visibility, 0, 0);
+    if (!memory) {
+        traits_unit_panic("%s\n", "Unable to map memory");
+    }
+
+    return memory;
+}
+
+void traits_unit_shared_free(void *address, size_t size) {
+    if (0 != munmap(address, size)) {
+        traits_unit_panic("%s\n", "Unable to unmap memory");
+    }
+}
+
 traits_unit_buffer_t *traits_unit_buffer_new(size_t capacity) {
-    traits_unit_buffer_t *self = malloc(sizeof(*self));
+    traits_unit_buffer_t *self = traits_unit_shared_malloc(sizeof(*self));
     if (!self) {
         traits_unit_panic("%s\n", "Out of memory.");
     }
-    self->_content = malloc(capacity + 1);
+    self->_content = traits_unit_shared_malloc(capacity + 1);
     if (!self->_content) {
         traits_unit_panic("%s\n", "Out of memory.");
     }
@@ -188,8 +218,9 @@ void traits_unit_buffer_clear(traits_unit_buffer_t *buffer) {
 
 void traits_unit_buffer_delete(traits_unit_buffer_t **buffer) {
     assert(buffer && *buffer);
-    free((*buffer)->_content);
-    free(*buffer);
+    traits_unit_shared_free((*buffer)->_content, (*buffer)->_capacity + 1);
+    traits_unit_shared_free(*buffer, sizeof(*buffer));
+    *buffer = NULL;
 }
 
 void _traits_unit_panic(size_t line, const char *file, const char *fmt, ...) {
@@ -229,9 +260,6 @@ int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t
 
     /* We are in the child process */
     if (pid == 0) {
-        /* Delete the child process copy of the buffer */
-        traits_unit_buffer_delete(&buffer);
-
         /* Close read end of pipe */
         close(pipe_fd[0]);
 
