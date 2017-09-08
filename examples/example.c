@@ -17,17 +17,21 @@ typedef struct MySubject *MySubject;
 /*
  * Setup declaration
  */
-SetupDeclare(MySubjectTraitYSetup);
+SetupDeclare(GoodSetup);
+SetupDeclare(BadSetup);
 
 /*
  * Teardown declaration
  */
-TeardownDeclare(MySubjectTraitYTeardown);
+TeardownDeclare(GoodTeardown);
+TeardownDeclare(BadTeardown);
 
 /*
  * Fixture declaration
  */
-FixtureDeclare(MySubjectTraitYFixture);
+FixtureDeclare(GoodFixture);
+FixtureDeclare(BadSetupFixture);
+FixtureDeclare(BadTeardownFixture);
 
 /*
  * Features declaration
@@ -52,32 +56,48 @@ Describe("MySubject",
          ),
          Trait(
                  "MySubjectTraitY",
-                 Run(MySubjectTraitYFeature1, MySubjectTraitYFixture),
-                 Run(MySubjectTraitYFeature2),
-                 Run(MySubjectTraitYFeature3, MySubjectTraitYFixture)
+                 Run(MySubjectTraitYFeature1, GoodFixture),
+                 Run(MySubjectTraitYFeature2, BadSetupFixture),
+                 Run(MySubjectTraitYFeature3, BadTeardownFixture)
          )
 )
 
 /*
  * Setup implementation
  */
-SetupDefine(MySubjectTraitYSetup) {
-    printf(" <MySubjectTraitYSetup> ");
+SetupDefine(GoodSetup) {
+    printf(" <GoodSetup> ");
+    return NULL;
+}
+
+SetupDefine(BadSetup) {
+    printf(" <BadSetup> ");
+    assert_true(false);
+    printf(" [should not see this] ");
     return NULL;
 }
 
 /*
  * Teardown implementation
  */
-TeardownDefine(MySubjectTraitYTeardown) {
+TeardownDefine(GoodTeardown) {
     (void) traits_context;
-    printf(" <MySubjectTraitYTeardown> ");
+    printf(" <GoodTeardown> ");
+}
+
+TeardownDefine(BadTeardown) {
+    (void) traits_context;
+    printf(" <BadTeardown> ");
+    assert_true(false);
+    printf(" [should not see this] ");
 }
 
 /*
  * Fixture definition
  */
-FixtureDefine(MySubjectTraitYFixture, MySubjectTraitYSetup, MySubjectTraitYTeardown);
+FixtureDefine(GoodFixture, GoodSetup, GoodTeardown);
+FixtureDefine(BadSetupFixture, BadSetup, GoodTeardown);
+FixtureDefine(BadTeardownFixture, GoodSetup, BadTeardown);
 
 /*
  * Features implementation
@@ -85,8 +105,6 @@ FixtureDefine(MySubjectTraitYFixture, MySubjectTraitYSetup, MySubjectTraitYTeard
 FeatureDefine(MySubjectTraitXFeature1) {
     (void) traits_context;
     printf(" <MySubjectTraitXFeature1> ");
-    assert_true(false);
-    printf(" <MySubjectTraitXFeature1.IShouldNotAppear>");
 }
 
 FeatureDefine(MySubjectTraitXFeature2) {
@@ -103,7 +121,7 @@ FeatureDefine(MySubjectTraitYFeature1) {
     (void) traits_context;
     printf(" <MySubjectTraitYFeature1> ");
     assert_true(false);
-    printf(" <MySubjectTraitYFeature1.IShouldNotAppear>");
+    printf(" [should not see this] ");
 }
 
 FeatureDefine(MySubjectTraitYFeature2) {

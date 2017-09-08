@@ -214,9 +214,6 @@ int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t
     pid_t pid;
     int fd, pipe_fd[2], pid_status;
 
-    /* Setup context */
-    void *context = feature->fixture->setup();
-
     /* Flush TRAITS_UNIT_OUTPUT_STREAM */
     fflush(TRAITS_UNIT_OUTPUT_STREAM);
 
@@ -230,7 +227,11 @@ int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t
         traits_unit_panic("%s\n", "Unable to fork process.");
     }
 
-    if (pid == 0) { /* We are in child process */
+    /* We are in the child process */
+    if (pid == 0) {
+        /* Delete the child process copy of the buffer */
+        traits_unit_buffer_delete(&buffer);
+
         /* Close read end of pipe */
         close(pipe_fd[0]);
 
@@ -240,33 +241,38 @@ int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t
         /* Redirect STDERR to pipe*/
         dup2(fd, STDERR_FILENO);
 
+        /* Setup context */
+        void *context = feature->fixture->setup();
+
         /* Run feature */
         feature->feature(context);
+
+        /* Teardown context */
+        feature->fixture->teardown(context);
 
         /* Close fd */
         close(fd);
 
         /* Exit normally */
         exit(EXIT_SUCCESS);
-    } else { /* We are in parent process */
-        /* Close write end of pipe */
-        close(pipe_fd[1]);
-
-        /* Get read end of pipe */
-        fd = pipe_fd[0];
-
-        /* Redirect the children output to TRAITS_UNIT_OUTPUT_STREAM */
-        traits_unit_buffer_read(buffer, fd);
-
-        /* Wait for children */
-        wait(&pid_status);
-
-        /* Close fd */
-        close(fd);
     }
 
-    /* Teardown context */
-    feature->fixture->teardown(context);
+    /* We are in the parent process */
+
+    /* Wait for children */
+    wait(&pid_status);
+
+    /* Close write end of pipe */
+    close(pipe_fd[1]);
+
+    /* Get read end of pipe */
+    fd = pipe_fd[0];
+
+    /* Redirect the children output to the global buffer */
+    traits_unit_buffer_read(buffer, fd);
+
+    /* Close fd */
+    close(fd);
 
     /* Flush TRAITS_UNIT_OUTPUT_STREAM */
     fflush(TRAITS_UNIT_OUTPUT_STREAM);
