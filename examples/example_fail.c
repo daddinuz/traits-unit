@@ -7,6 +7,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "traits.h"
 #include "traits-unit.h"
 
@@ -37,13 +38,8 @@ FixtureDeclare(BadTeardownFixture);
 /*
  * Features declaration
  */
-FeatureDeclare(MySubjectTraitXFeature1);
-FeatureDeclare(MySubjectTraitXFeature2);
-FeatureDeclare(MySubjectTraitXFeature3);
-
-FeatureDeclare(MySubjectTraitYFeature1);
-FeatureDeclare(MySubjectTraitYFeature2);
-FeatureDeclare(MySubjectTraitYFeature3);
+FeatureDeclare(MySubjectTraitGoodFeature);
+FeatureDeclare(MySubjectTraitBadFeature);
 
 /*
  * Describe
@@ -51,15 +47,16 @@ FeatureDeclare(MySubjectTraitYFeature3);
 Describe("MySubject",
          Trait(
                  "MySubjectTraitX",
-                 Run(MySubjectTraitXFeature1),
-                 Skip(MySubjectTraitXFeature2),
-                 Todo(MySubjectTraitXFeature3)
+                 Run(MySubjectTraitGoodFeature),
+                 Skip(MySubjectTraitBadFeature),
+                 Todo(MySubjectTraitBadFeature)
          ),
          Trait(
                  "MySubjectTraitY",
-                 Run(MySubjectTraitYFeature1, GoodFixture),
-                 Run(MySubjectTraitYFeature2, BadSetupFixture),
-                 Run(MySubjectTraitYFeature3, BadTeardownFixture)
+                 Run(MySubjectTraitGoodFeature, BadSetupFixture),
+                 Run(MySubjectTraitBadFeature, GoodFixture),
+                 Run(MySubjectTraitGoodFeature, BadTeardownFixture),
+                 Run(MySubjectTraitGoodFeature, GoodFixture)
          )
 )
 
@@ -68,7 +65,7 @@ Describe("MySubject",
  */
 SetupDefine(GoodSetup) {
     printf(" <GoodSetup> ");
-    return NULL;
+    return malloc(32);
 }
 
 SetupDefine(BadSetup) {
@@ -82,13 +79,13 @@ SetupDefine(BadSetup) {
  * Teardown implementation
  */
 TeardownDefine(GoodTeardown) {
-    (void) traits_context;
     printf(" <GoodTeardown> ");
+    free(traits_context);
 }
 
 TeardownDefine(BadTeardown) {
-    (void) traits_context;
     printf(" <BadTeardown> ");
+    free(traits_context);
     assert_true(false);
     printf(" [should not see this] ");
 }
@@ -103,34 +100,14 @@ FixtureDefine(BadTeardownFixture, GoodSetup, BadTeardown);
 /*
  * Features implementation
  */
-FeatureDefine(MySubjectTraitXFeature1) {
+FeatureDefine(MySubjectTraitGoodFeature) {
     (void) traits_context;
-    printf(" <MySubjectTraitXFeature1> ");
+    printf(" <MySubjectTraitGoodFeature> ");
 }
 
-FeatureDefine(MySubjectTraitXFeature2) {
+FeatureDefine(MySubjectTraitBadFeature) {
     (void) traits_context;
-    printf(" <MySubjectTraitXFeature2> ");
-}
-
-FeatureDefine(MySubjectTraitXFeature3) {
-    (void) traits_context;
-    printf(" <MySubjectTraitXFeature3> ");
-}
-
-FeatureDefine(MySubjectTraitYFeature1) {
-    (void) traits_context;
-    printf(" <MySubjectTraitYFeature1> ");
+    printf(" <MySubjectTraitBadFeature> ");
     assert_true(false);
-    printf(" [should not see this] ");
-}
-
-FeatureDefine(MySubjectTraitYFeature2) {
-    (void) traits_context;
-    printf(" <MySubjectTraitYFeature2> ");
-}
-
-FeatureDefine(MySubjectTraitYFeature3) {
-    (void) traits_context;
-    printf(" <MySubjectTraitYFeature3> ");
+    printf(" [ShouldNotSeeThis] ");
 }

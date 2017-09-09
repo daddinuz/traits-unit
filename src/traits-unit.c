@@ -55,6 +55,9 @@ FixtureDefine(DefaultFixture, DefaultSetup, DefaultTeardown);
 /*
  * Internal declarations
  */
+static traits_unit_feature_t *global_feature = NULL;
+static void *global_context = NULL;
+
 static void *traits_unit_shared_malloc(size_t size);
 static void traits_unit_shared_free(void *address, size_t size);
 
@@ -79,6 +82,10 @@ TRAITS_UNIT_ATTRIBUTE_FORMAT_NORETURN(3, 4);
 
 static void traits_unit_print(size_t indent, const char *fmt, ...)
 TRAITS_UNIT_ATTRIBUTE_FORMAT(2, 3);
+
+static void _traits_unit_teardown(void);
+
+static void traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context);
 
 static int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
 
@@ -241,6 +248,22 @@ void traits_unit_print(size_t indent, const char *fmt, ...) {
     va_end(args);
 }
 
+void _traits_unit_teardown(void) {
+    assert(global_feature);
+    global_feature->fixture->teardown(global_context);
+    global_context = NULL;
+    global_feature = NULL;
+}
+
+void traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context) {
+    assert(feature);
+    assert(NULL == global_feature);
+    assert(NULL == global_context);
+    global_feature = feature;
+    global_context = context;
+    atexit(_traits_unit_teardown);
+}
+
 int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
     pid_t pid;
     int fd, pipe_fd[2], pid_status;
@@ -272,11 +295,11 @@ int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t
         /* Setup context */
         void *context = feature->fixture->setup();
 
+        /* Teardown context on exit */
+        traits_unit_teardown_on_exit(feature, context);
+
         /* Run feature */
         feature->feature(context);
-
-        /* Teardown context */
-        feature->fixture->teardown(context);
 
         /* Close fd */
         close(fd);
