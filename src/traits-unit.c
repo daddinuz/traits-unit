@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
         for (size_t x = 0; (feature = &trait->features[x]) && feature->feature && feature->feature_name; x++) {
             counter_all++;
             traits_unit_print(indentation_level, "Feature: %s... ", feature->feature_name);
-            if (feature->action == TRAITS_UNIT_FEATURE_RUN) {
+            if (feature->action == TRAITS_UNIT_ACTION_RUN) {
                 traits_unit_buffer_clear(buffer);
                 if (traits_unit_run_feature(feature, buffer) == EXIT_SUCCESS) {
                     counter_succeed++;
@@ -116,14 +116,14 @@ int main(int argc, char *argv[]) {
                     counter_failed++;
                     traits_unit_print(0, "failed\n\n%s\n", traits_unit_buffer_get(buffer));
                 }
-            } else if (feature->action == TRAITS_UNIT_FEATURE_SKIP) {
+            } else if (feature->action == TRAITS_UNIT_ACTION_SKIP) {
                 counter_skipped++;
                 traits_unit_print(0, "skipped\n");
-            } else if (feature->action == TRAITS_UNIT_FEATURE_TODO) {
+            } else if (feature->action == TRAITS_UNIT_ACTION_TODO) {
                 counter_todo++;
                 traits_unit_print(0, "todo\n");
             } else {
-                traits_unit_panic("Unexpected traits_unit_feature_action_t value: %d\n", feature->action);
+                traits_unit_panic("Unexpected traits_unit_action_t value: %d\n", feature->action);
             }
         }
         indentation_level -= TRAITS_UNIT_INDENTATION_STEP;

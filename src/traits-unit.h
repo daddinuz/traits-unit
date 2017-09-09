@@ -38,14 +38,14 @@ typedef struct traits_unit_fixture_t {
 
 typedef void traits_unit_feature_fn(void *traits_context);
 
-typedef enum traits_unit_feature_action_t {
-    TRAITS_UNIT_FEATURE_RUN,
-    TRAITS_UNIT_FEATURE_SKIP,
-    TRAITS_UNIT_FEATURE_TODO
-} traits_unit_feature_action_t;
+typedef enum traits_unit_action_t {
+    TRAITS_UNIT_ACTION_RUN,
+    TRAITS_UNIT_ACTION_SKIP,
+    TRAITS_UNIT_ACTION_TODO
+} traits_unit_action_t;
 
 typedef struct traits_unit_feature_t {
-    traits_unit_feature_action_t action;
+    traits_unit_action_t action;
     const char *feature_name;
     traits_unit_fixture_t *fixture;
     traits_unit_feature_fn *feature;
@@ -95,19 +95,19 @@ typedef struct traits_unit_subject_t {
     __Run(__VA_ARGS__, DefaultFixture, DefaultFixture)
 
 #define __Run(Name, Fixture, ...)               \
-    {.feature_name=__TRAITS_UNIT_TO_STRING(Name), .feature=__TRAITS_UNIT_FEATURE_ID(Name), .fixture=&__TRAITS_UNIT_FIXTURE_ID(Fixture), .action=TRAITS_UNIT_FEATURE_RUN}
+    {.feature_name=__TRAITS_UNIT_TO_STRING(Name), .feature=__TRAITS_UNIT_FEATURE_ID(Name), .fixture=&__TRAITS_UNIT_FIXTURE_ID(Fixture), .action=TRAITS_UNIT_ACTION_RUN}
 
 #define Skip(...)                               \
     __Skip(__VA_ARGS__, DefaultFixture, DefaultFixture)
 
 #define __Skip(Name, Fixture, ...)              \
-    {.feature_name=__TRAITS_UNIT_TO_STRING(Name), .feature=__TRAITS_UNIT_FEATURE_ID(Name), .fixture=&__TRAITS_UNIT_FIXTURE_ID(Fixture), .action=TRAITS_UNIT_FEATURE_SKIP}
+    {.feature_name=__TRAITS_UNIT_TO_STRING(Name), .feature=__TRAITS_UNIT_FEATURE_ID(Name), .fixture=&__TRAITS_UNIT_FIXTURE_ID(Fixture), .action=TRAITS_UNIT_ACTION_SKIP}
 
 #define Todo(...)                               \
     __Todo(__VA_ARGS__, DefaultFixture, DefaultFixture)
 
 #define __Todo(Name, Fixture, ...)              \
-    {.feature_name=__TRAITS_UNIT_TO_STRING(Name), .feature=__TRAITS_UNIT_FEATURE_ID(Name), .fixture=&__TRAITS_UNIT_FIXTURE_ID(Fixture), .action=TRAITS_UNIT_FEATURE_TODO}
+    {.feature_name=__TRAITS_UNIT_TO_STRING(Name), .feature=__TRAITS_UNIT_FEATURE_ID(Name), .fixture=&__TRAITS_UNIT_FIXTURE_ID(Fixture), .action=TRAITS_UNIT_ACTION_TODO}
 
 /*
  * Declare default fixtures
