@@ -13,6 +13,7 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include "traits-unit.h"
@@ -31,6 +32,7 @@
 #define TRAITS_UNIT_OUTPUT_STREAM                       stdout
 #define TRAITS_UNIT_BUFFER_CAPACITY                     (2 << 8)
 #define TRAITS_UNIT_INDENTATION_STEP                    2
+#define TRAITS_UNIT_INDENTATION_START                   0
 
 /*
  * Forward declare traits subject (this should come from the test file)
@@ -80,14 +82,38 @@ static void traits_unit_buffer_delete(traits_unit_buffer_t **buffer);
 static void _traits_unit_panic(size_t line, const char *file, const char *fmt, ...)
 TRAITS_UNIT_ATTRIBUTE_FORMAT_NORETURN(3, 4);
 
-static void traits_unit_print(size_t indent, const char *fmt, ...)
+static void traits_unit_print(size_t indentation_level, const char *fmt, ...)
 TRAITS_UNIT_ATTRIBUTE_FORMAT(2, 3);
 
 static void _traits_unit_teardown(void);
 
 static void traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context);
 
-static int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
+typedef struct traits_unit_trait_result_t {
+    size_t succeed;
+    size_t skipped;
+    size_t failed;
+    size_t todo;
+    size_t all;
+} traits_unit_trait_result_t;
+
+static traits_unit_trait_result_t
+traits_unit_run_trait(size_t indentation_level, traits_unit_trait_t *trait, traits_unit_buffer_t *buffer);
+
+typedef enum traits_unit_feature_result_t {
+    TRAITS_UNIT_FEATURE_RESULT_SUCCEED,
+    TRAITS_UNIT_FEATURE_RESULT_SKIPPED,
+    TRAITS_UNIT_FEATURE_RESULT_FAILED,
+    TRAITS_UNIT_FEATURE_RESULT_TODO,
+} traits_unit_feature_result_t;
+
+static int _traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
+
+static traits_unit_feature_result_t
+traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
+
+static void
+traits_unit_report(size_t indentation_level, size_t succeed, size_t skipped, size_t failed, size_t todo, size_t all);
 
 /*
  * Macro helpers
@@ -99,52 +125,67 @@ static int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_b
  * Implements main
  */
 int main(int argc, char *argv[]) {
-    (void) argc, (void) argv;
-    size_t indentation_level = 0;
-    traits_unit_trait_t *trait = NULL;
-    traits_unit_feature_t *feature = NULL;
-    traits_unit_buffer_t *buffer = traits_unit_buffer_new(TRAITS_UNIT_BUFFER_CAPACITY);
+    bool loaded = true;
+    traits_unit_buffer_t *buffer = NULL;
+    traits_unit_trait_t *traits_list[__TRAITS_UNIT_MAX_TRAITS] = {0};
     size_t counter_succeed = 0, counter_skipped = 0, counter_failed = 0, counter_todo = 0, counter_all = 0;
+    size_t indentation_level = TRAITS_UNIT_INDENTATION_START;
 
-    traits_unit_print(indentation_level, "Describing: %s\n", traits_unit_subject.subject);
-    indentation_level += TRAITS_UNIT_INDENTATION_STEP;
-    for (size_t i = 0; (trait = &traits_unit_subject.traits[i]) && trait->trait_name && trait->features; i++) {
-        traits_unit_print(indentation_level, "Trait: %s\n", traits_unit_subject.traits[i].trait_name);
-        indentation_level += TRAITS_UNIT_INDENTATION_STEP;
-        for (size_t x = 0; (feature = &trait->features[x]) && feature->feature && feature->feature_name; x++) {
-            counter_all++;
-            traits_unit_print(indentation_level, "Feature: %s... ", feature->feature_name);
-            if (feature->action == TRAITS_UNIT_ACTION_RUN) {
-                traits_unit_buffer_clear(buffer);
-                if (traits_unit_run_feature(feature, buffer) == EXIT_SUCCESS) {
-                    counter_succeed++;
-                    traits_unit_print(0, "succeed\n");
-                } else {
-                    counter_failed++;
-                    traits_unit_print(0, "failed\n\n%s\n", traits_unit_buffer_get(buffer));
+    /* Load traits_list */
+    if (argc > 1) {
+        /* Specific traits must be run */
+        if (argc > __TRAITS_UNIT_MAX_TRAITS) {
+            /* Too many traits has been specified, not able to load traits_list */
+            loaded = false;
+            traits_unit_print(indentation_level, "Too many traits specified\n");
+        } else {
+            /* Search for the specified traits and load them into traits_list */
+            size_t index = 0;
+            traits_unit_trait_t *trait = NULL;
+            for (int x = 1; x < argc; x++) {
+                bool found = false;
+                for (size_t y = 0;
+                     (trait = &traits_unit_subject.traits[y]) && trait->trait_name && trait->features; y++) {
+                    if (0 == strcmp(trait->trait_name, argv[x])) {
+                        found = true;
+                        traits_list[index++] = trait;
+                    }
                 }
-            } else if (feature->action == TRAITS_UNIT_ACTION_SKIP) {
-                counter_skipped++;
-                traits_unit_print(0, "skipped\n");
-            } else if (feature->action == TRAITS_UNIT_ACTION_TODO) {
-                counter_todo++;
-                traits_unit_print(0, "todo\n");
-            } else {
-                traits_unit_panic("Unexpected traits_unit_action_t value: %d\n", feature->action);
+                if (!found) {
+                    /* No such trait found, not able to load traits_list */
+                    loaded = false;
+                    traits_unit_print(indentation_level, "Unknown trait: `%s`\n", argv[x]);
+                    break;
+                }
             }
         }
-        indentation_level -= TRAITS_UNIT_INDENTATION_STEP;
+    } else {
+        /* Load all traits present in traits_subject */
+        for (size_t i = 0; i < __TRAITS_UNIT_MAX_TRAITS; i++) {
+            traits_list[i] = &traits_unit_subject.traits[i];
+        }
     }
-    indentation_level -= TRAITS_UNIT_INDENTATION_STEP;
-    traits_unit_newline();
-    traits_unit_print(indentation_level, "Succeed: %zu\n", counter_succeed);
-    traits_unit_print(indentation_level, "Skipped: %zu\n", counter_skipped);
-    traits_unit_print(indentation_level, " Failed: %zu\n", counter_failed);
-    traits_unit_print(indentation_level, "   Todo: %zu\n", counter_todo);
-    traits_unit_print(indentation_level, "    All: %zu\n", counter_all);
 
-    traits_unit_buffer_delete(&buffer);
-    return (counter_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+    if (loaded) {
+        /* Run features of traits in traits_list */
+        traits_unit_trait_t *trait = NULL;
+        buffer = traits_unit_buffer_new(TRAITS_UNIT_BUFFER_CAPACITY);
+        traits_unit_print(indentation_level, "Describing: %s\n", traits_unit_subject.subject);
+        indentation_level += TRAITS_UNIT_INDENTATION_STEP;
+        for (size_t i = 0; (trait = traits_list[i]) && trait->trait_name && trait->features; i++) {
+            traits_unit_trait_result_t trait_result = traits_unit_run_trait(indentation_level, trait, buffer);
+            counter_succeed += trait_result.succeed;
+            counter_skipped += trait_result.skipped;
+            counter_failed += trait_result.failed;
+            counter_todo += trait_result.todo;
+            counter_all += trait_result.all;
+        }
+        indentation_level -= TRAITS_UNIT_INDENTATION_STEP;
+        traits_unit_report(indentation_level, counter_succeed, counter_skipped, counter_failed, counter_todo, counter_all);
+        traits_unit_buffer_delete(&buffer);
+    }
+
+    return (loaded && (0 == counter_failed)) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 /*
@@ -240,10 +281,10 @@ void _traits_unit_panic(size_t line, const char *file, const char *fmt, ...) {
     exit(-1);
 }
 
-void traits_unit_print(size_t indent, const char *fmt, ...) {
+void traits_unit_print(size_t indentation_level, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    fprintf(TRAITS_UNIT_OUTPUT_STREAM, "%*s", (int) indent, "");
+    fprintf(TRAITS_UNIT_OUTPUT_STREAM, "%*s", (int) indentation_level, "");
     vfprintf(TRAITS_UNIT_OUTPUT_STREAM, fmt, args);
     va_end(args);
 }
@@ -264,7 +305,42 @@ void traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context)
     atexit(_traits_unit_teardown);
 }
 
-int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
+traits_unit_trait_result_t
+traits_unit_run_trait(size_t indentation_level, traits_unit_trait_t *trait, traits_unit_buffer_t *buffer) {
+
+    traits_unit_trait_result_t trait_result = {0};
+    traits_unit_feature_t *feature = NULL;
+    traits_unit_print(indentation_level, "Trait: %s\n", trait->trait_name);
+    indentation_level += TRAITS_UNIT_INDENTATION_STEP;
+    for (size_t i = 0; (feature = &trait->features[i]) && feature->feature && feature->feature_name; i++) {
+        traits_unit_feature_result_t feature_result = traits_unit_run_feature(indentation_level, feature, buffer);
+        switch (feature_result) {
+            case TRAITS_UNIT_FEATURE_RESULT_SUCCEED: {
+                trait_result.succeed++;
+                break;
+            }
+            case TRAITS_UNIT_FEATURE_RESULT_SKIPPED: {
+                trait_result.skipped++;
+                break;
+            }
+            case TRAITS_UNIT_FEATURE_RESULT_FAILED: {
+                trait_result.failed++;
+                break;
+            }
+            case TRAITS_UNIT_FEATURE_RESULT_TODO: {
+                trait_result.todo++;
+                break;
+            }
+            default: {
+                traits_unit_panic("Unexpected traits_unit_feature_result_t value: %d\n", feature_result);
+            }
+        }
+        trait_result.all++;
+    }
+    return trait_result;
+}
+
+int _traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
     pid_t pid;
     int fd, pipe_fd[2], pid_status;
 
@@ -282,7 +358,7 @@ int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t
     }
 
     /* We are in the child process */
-    if (pid == 0) {
+    if (0 == pid) {
         /* Close read end of pipe */
         close(pipe_fd[0]);
 
@@ -328,4 +404,48 @@ int traits_unit_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t
     /* Flush TRAITS_UNIT_OUTPUT_STREAM */
     fflush(TRAITS_UNIT_OUTPUT_STREAM);
     return pid_status;
+}
+
+traits_unit_feature_result_t
+traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
+
+    traits_unit_feature_result_t result = TRAITS_UNIT_FEATURE_RESULT_FAILED;
+    traits_unit_print(indentation_level, "Feature: %s... ", feature->feature_name);
+    switch (feature->action) {
+        case TRAITS_UNIT_ACTION_RUN: {
+            traits_unit_buffer_clear(buffer);
+            if (EXIT_SUCCESS == _traits_unit_fork_and_run_feature(feature, buffer)) {
+                result = TRAITS_UNIT_FEATURE_RESULT_SUCCEED;
+                traits_unit_print(0, "succeed\n");
+            } else {
+                result = TRAITS_UNIT_FEATURE_RESULT_FAILED;
+                traits_unit_print(0, "failed\n\n%s\n", traits_unit_buffer_get(buffer));
+            }
+            break;
+        }
+        case TRAITS_UNIT_ACTION_SKIP: {
+            result = TRAITS_UNIT_FEATURE_RESULT_SKIPPED;
+            traits_unit_print(0, "skipped\n");
+            break;
+        }
+        case TRAITS_UNIT_ACTION_TODO: {
+            result = TRAITS_UNIT_FEATURE_RESULT_TODO;
+            traits_unit_print(0, "todo\n");
+            break;
+        }
+        default: {
+            traits_unit_panic("Unexpected traits_unit_action_t value: %d\n", feature->action);
+        }
+    }
+    return result;
+}
+
+void
+traits_unit_report(size_t indentation_level, size_t succeed, size_t skipped, size_t failed, size_t todo, size_t all) {
+    traits_unit_newline();
+    traits_unit_print(indentation_level, "Succeed: %zu\n", succeed);
+    traits_unit_print(indentation_level, "Skipped: %zu\n", skipped);
+    traits_unit_print(indentation_level, " Failed: %zu\n", failed);
+    traits_unit_print(indentation_level, "   Todo: %zu\n", todo);
+    traits_unit_print(indentation_level, "    All: %zu\n", all);
 }

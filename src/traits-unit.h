@@ -28,6 +28,10 @@ extern "C" {
 #define __TRAITS_UNIT_FIXTURE_ID(Name)      __TRAITS_UNIT_CAT(traits_unit_user_fixture_, Name)
 #define __TRAITS_UNIT_FEATURE_ID(Name)      __TRAITS_UNIT_CAT(traits_unit_user_feature_, Name)
 
+#define __TRAITS_UNIT_MAX_TRAITS            (32 + 1)
+#define __TRAITS_UNIT_MAX_FEATURES          (128 + 1)
+
+
 typedef void *traits_unit_setup_fn(void);
 typedef void traits_unit_teardown_fn(void *);
 
@@ -53,12 +57,12 @@ typedef struct traits_unit_feature_t {
 
 typedef struct traits_unit_trait_t {
     const char *trait_name;
-    traits_unit_feature_t features[128];
+    traits_unit_feature_t features[__TRAITS_UNIT_MAX_FEATURES];
 } traits_unit_trait_t;
 
 typedef struct traits_unit_subject_t {
     const char *subject;
-    traits_unit_trait_t traits[32];
+    traits_unit_trait_t traits[__TRAITS_UNIT_MAX_TRAITS];
 } traits_unit_subject_t;
 
 #define SetupDeclare(Name)                      \
