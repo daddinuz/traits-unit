@@ -1,3 +1,0 @@
-P1: Handle argc and argv to select specific traits or features to run.
-P3: Beautify README.md and document API.
-P5: Windows porting.
