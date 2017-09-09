@@ -1,7 +1,8 @@
 In Progress
 -----------
+P0: Call Teardown if Setup is ok regardless the result of Feature.  
 P1: Handle argc and argv to select specific traits or features to run.  
-P3: Beautify README.md and document API.
+P3: Beautify README.md and document API.  
 
 Done
 ----
