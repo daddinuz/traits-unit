@@ -3,7 +3,7 @@
  *
  * Author: daddinuz
  * email:  daddinuz@gmail.com
- * Date:   September 02, 2017 
+ * Date:   September 09, 2017
  */
 
 #include <stdio.h>
@@ -12,102 +12,91 @@
 #include "traits-unit.h"
 
 /*
- * Subject
+ * Declare setups
  */
-typedef struct MySubject *MySubject;
-
-/*
- * Setup declaration
- */
-SetupDeclare(GoodSetup);
 SetupDeclare(BadSetup);
 
 /*
- * Teardown declaration
+ * Declare teardowns
  */
-TeardownDeclare(GoodTeardown);
 TeardownDeclare(BadTeardown);
 
 /*
- * Fixture declaration
+ * Declare fixtures
  */
-FixtureDeclare(GoodFixture);
 FixtureDeclare(BadSetupFixture);
 FixtureDeclare(BadTeardownFixture);
 
 /*
- * Features declaration
+ * Declare features
  */
-FeatureDeclare(MySubjectTraitGoodFeature);
-FeatureDeclare(MySubjectTraitBadFeature);
+FeatureDeclare(BadSetupFeature);
+FeatureDeclare(BadFeature);
+FeatureDeclare(BadTeardownFeature);
+FeatureDeclare(SegFaultFeature);
 
 /*
- * Describe
+ * Describe our test case
  */
-Describe("MySubject",
+Describe("ShouldNotPass",
          Trait(
-                 "MySubjectTraitX",
-                 Run(MySubjectTraitGoodFeature),
-                 Skip(MySubjectTraitBadFeature),
-                 Todo(MySubjectTraitBadFeature)
+                 "AssertionErrors",
+                 Run(BadSetupFeature, BadSetupFixture),
+                 Run(BadFeature),
+                 Run(BadTeardownFeature, BadTeardownFixture)
          ),
          Trait(
-                 "MySubjectTraitY",
-                 Run(MySubjectTraitGoodFeature, BadSetupFixture),
-                 Run(MySubjectTraitBadFeature, GoodFixture),
-                 Run(MySubjectTraitGoodFeature, BadTeardownFixture),
-                 Run(MySubjectTraitGoodFeature, GoodFixture)
+                 "UnexpectedErrors",
+                 Run(SegFaultFeature)
          )
 )
 
 /*
- * Setup implementation
+ * Define setups
  */
-SetupDefine(GoodSetup) {
-    printf(" <GoodSetup> ");
-    return malloc(32);
-}
-
 SetupDefine(BadSetup) {
-    printf(" <BadSetup> ");
     assert_true(false);
     printf(" [should not see this] ");
     return NULL;
 }
 
 /*
- * Teardown implementation
+ * Define teardowns
  */
-TeardownDefine(GoodTeardown) {
-    printf(" <GoodTeardown> ");
-    free(traits_context);
-}
-
 TeardownDefine(BadTeardown) {
-    printf(" <BadTeardown> ");
-    free(traits_context);
+    (void) traits_context;
     assert_true(false);
     printf(" [should not see this] ");
 }
 
 /*
- * Fixture definition
+ * Define fixtures
  */
-FixtureDefine(GoodFixture, GoodSetup, GoodTeardown);
-FixtureDefine(BadSetupFixture, BadSetup, GoodTeardown);
-FixtureDefine(BadTeardownFixture, GoodSetup, BadTeardown);
+FixtureDefine(BadSetupFixture, BadSetup, DefaultTeardown);
+FixtureDefine(BadTeardownFixture, DefaultSetup, BadTeardown);
 
 /*
- * Features implementation
+ * Define features
  */
-FeatureDefine(MySubjectTraitGoodFeature) {
+FeatureDefine(BadSetupFeature) {
     (void) traits_context;
-    printf(" <MySubjectTraitGoodFeature> ");
+    /* Just do nothing */
 }
 
-FeatureDefine(MySubjectTraitBadFeature) {
+FeatureDefine(BadFeature) {
     (void) traits_context;
-    printf(" <MySubjectTraitBadFeature> ");
     assert_true(false);
-    printf(" [ShouldNotSeeThis] ");
+    printf(" [should not see this] ");
+}
+
+FeatureDefine(BadTeardownFeature) {
+    (void) traits_context;
+    /* Just do nothing */
+}
+
+FeatureDefine(SegFaultFeature) {
+    (void) traits_context;
+    /* De-referencing a null pointer */
+    const int *x = traits_context;
+    printf(" [should not see this: %d] ", *x);
 }
