@@ -11,7 +11,7 @@
 #ifndef __TRAITS_UNIT_H__
 #define __TRAITS_UNIT_H__
 
-#define TRAITS_UNIT                         "1.0.0"
+#define TRAITS_UNIT                         "1.0.1"
 
 #ifdef __cplusplus
 extern "C" {
