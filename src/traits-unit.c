@@ -43,13 +43,11 @@ extern traits_unit_subject_t traits_unit_subject;
  * Implements default fixtures from header file
  */
 SetupDefine(DefaultSetup) {
-    printf(" <DefaultSetup> ");
     return NULL;
 }
 
 TeardownDefine(DefaultTeardown) {
     (void) traits_context;
-    printf(" <DefaultTeardown> ");
 }
 
 FixtureDefine(DefaultFixture, DefaultSetup, DefaultTeardown);
@@ -414,11 +412,19 @@ traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature
     switch (feature->action) {
         case TRAITS_UNIT_ACTION_RUN: {
             traits_unit_buffer_clear(buffer);
-            if (EXIT_SUCCESS == _traits_unit_fork_and_run_feature(feature, buffer)) {
+            const int exit_status = _traits_unit_fork_and_run_feature(feature, buffer);
+            if (EXIT_SUCCESS == exit_status) {
                 result = TRAITS_UNIT_FEATURE_RESULT_SUCCEED;
                 traits_unit_print(0, "succeed\n");
             } else {
                 result = TRAITS_UNIT_FEATURE_RESULT_FAILED;
+                if (!WIFEXITED(exit_status)) {
+                    if (WIFSIGNALED(exit_status)) {
+                        traits_unit_print(0, "(terminated by signal %d - %s) ", WTERMSIG(exit_status), strsignal(WTERMSIG(exit_status)));
+                    } else {
+                        traits_unit_print(0, "(terminated abnormally) ");
+                    }
+                }
                 traits_unit_print(0, "failed\n\n%s\n", traits_unit_buffer_get(buffer));
             }
             break;
