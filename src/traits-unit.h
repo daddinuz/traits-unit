@@ -90,10 +90,10 @@ typedef struct traits_unit_subject_t {
     void __TRAITS_UNIT_FEATURE_ID(Name)(void *traits_context)
 
 #define Describe(Subject, ...)                  \
-    traits_unit_subject_t traits_unit_subject = {.subject=(Subject), .traits={__VA_ARGS__, {0}}};
+    traits_unit_subject_t traits_unit_subject = {.subject=(Subject), .traits={__VA_ARGS__}};
 
 #define Trait(Name, ...)                        \
-    {.trait_name=(Name), .features={__VA_ARGS__, {0}}}
+    {.trait_name=(Name), .features={__VA_ARGS__}}
 
 #define Run(...)                                \
     __Run(__VA_ARGS__, DefaultFixture, DefaultFixture)
