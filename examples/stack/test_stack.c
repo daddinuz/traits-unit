@@ -3,7 +3,7 @@
  *
  * Author: daddinuz
  * email:  daddinuz@gmail.com
- * Date:   September 14, 2017 
+ * Date:   September 14, 2017
  */
 
 #include "stack.h"
@@ -128,7 +128,7 @@ FeatureDefine(AddOneElement) {
     err_t err;
     stack_t sut = traits_context;
     void *element = NULL;
-    const char const *element_one = "Element One";
+    const char *const element_one = "Element One";
 
     err = stack_add(sut, as(void *, element_one));
     assert_equal(ERR_OK, err);
@@ -143,8 +143,8 @@ FeatureDefine(AddTwoElements) {
     err_t err;
     stack_t sut = traits_context;
     void *element = NULL;
-    const char const *element_one = "Element One";
-    const char const *element_two = "Element Two";
+    const char *const element_one = "Element One";
+    const char *const element_two = "Element Two";
 
     err = stack_add(sut, as(void *, element_one));
     assert_equal(ERR_OK, err);
@@ -167,9 +167,9 @@ FeatureDefine(AddThreeElements) {
     err_t err;
     stack_t sut = traits_context;
     void *element = NULL;
-    const char const *element_one = "Element One";
-    const char const *element_two = "Element Two";
-    const char const *element_three = "Element Three";
+    const char *const element_one = "Element One";
+    const char *const element_two = "Element Two";
+    const char *const element_three = "Element Three";
 
     err = stack_add(sut, as(void *, element_one));
     assert_equal(ERR_OK, err);
