@@ -6,8 +6,25 @@
  * Date:   September 09, 2017 
  */
 
-#include "traits.h"
+#include <traits/traits.h>
 #include "traits-unit.h"
+
+/*
+ * Declare features
+ */
+FeatureDeclare(TrueMustBeTrue);
+FeatureDeclare(FalseMustBeFalse);
+
+/*
+ * Describe our test case
+ */
+Describe("ShouldPass",
+         Trait(
+                 "Boolean",
+                 Run(TrueMustBeTrue),
+                 Run(FalseMustBeFalse)
+         )
+)
 
 /*
  * Define features
@@ -21,14 +38,3 @@ FeatureDefine(FalseMustBeFalse) {
     (void) traits_context;
     assert_false(false);
 }
-
-/*
- * Describe our test case
- */
-Describe("ShouldPass",
-         Trait(
-                 "Boolean",
-                 Run(TrueMustBeTrue),
-                 Run(FalseMustBeFalse)
-         )
-)

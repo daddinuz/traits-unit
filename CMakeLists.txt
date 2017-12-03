@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.0)
 project(traits-unit)
 
 set(CMAKE_C_STANDARD 99)
@@ -9,36 +9,48 @@ if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
 endif ()
 
 #####
+# Macro definitions
+###
+macro(get_subdirectories result current_directory)
+    set(directory_list "")
+    file(GLOB children RELATIVE ${current_directory} ${current_directory}/*)
+    foreach (child ${children})
+        if (IS_DIRECTORY ${current_directory}/${child})
+            list(APPEND directory_list ${current_directory}/${child})
+        endif ()
+    endforeach ()
+    set(${result} ${directory_list})
+endmacro(get_subdirectories)
+
+#####
+# Variable definitions
+###
+set(DEPENDENCIES_PATH ${PROJECT_SOURCE_DIR}/deps)
+set(PROJECT_PATH ${PROJECT_SOURCE_DIR}/sources)
+set(TESTS_PATH ${PROJECT_SOURCE_DIR}/tests)
+
+file(GLOB PROJECT_HEADERS ${PROJECT_PATH}/*.h)
+file(GLOB PROJECT_SOURCES ${PROJECT_PATH}/*.c)
+file(GLOB UNIT_TEST_SOURCES ${TESTS_PATH}/unit/*.c)
+
+#####
 # Working directories
 ###
-set(SOURCE_PATH ${PROJECT_SOURCE_DIR}/src)
-set(DEPENDENCY_PATH ${PROJECT_SOURCE_DIR}/deps)
-set(EXAMPLE_PATH ${PROJECT_SOURCE_DIR}/examples)
-
-include_directories(${SOURCE_PATH})
-file(GLOB _DEPENDENCY_DIRECTORIES ${DEPENDENCY_PATH}/*)
-foreach (_file ${_DEPENDENCY_DIRECTORIES})
-    if (IS_DIRECTORY ${_file})
-        include_directories(${_file})
-    endif ()
-endforeach (_file ${_DEPENDENCY_DIRECTORIES})
+include_directories(${PROJECT_PATH})
+include_directories(${DEPENDENCIES_PATH})
 
 #####
 # Archive
 ###
-file(GLOB HEADER_FILES ${SOURCE_PATH}/*.h)
-file(GLOB SOURCE_FILES ${SOURCE_PATH}/*.c)
-add_library(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})
+add_library(${PROJECT_NAME} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 
 #####
-# Examples
+# Tests
 ###
-file(GLOB EXAMPLE_SOURCES ${EXAMPLE_PATH}/*.c)
-foreach (source_file ${EXAMPLE_SOURCES})
+enable_testing()
+foreach (source_file ${UNIT_TEST_SOURCES})
     get_filename_component(target ${source_file} NAME_WE)
-    add_executable(${target} ${DEPENDENCY_PATH}/traits/traits.h ${source_file})
+    add_executable(${target} ${source_file})
     target_link_libraries(${target} PRIVATE ${PROJECT_NAME})
-endforeach (source_file ${EXAMPLE_SOURCES})
-add_library(stack ${EXAMPLE_PATH}/stack/stack.h ${EXAMPLE_PATH}/stack/stack.c)
-add_executable(test_stack ${DEPENDENCY_PATH}/traits/traits.h ${EXAMPLE_PATH}/stack/test_stack.c)
-target_link_libraries(test_stack PRIVATE ${PROJECT_NAME} stack)
+    add_test(${target} ${target})
+endforeach (source_file ${UNIT_TEST_SOURCES})

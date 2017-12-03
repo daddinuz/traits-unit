@@ -7,7 +7,7 @@
  */
 
 #include <stdlib.h>
-#include "traits.h"
+#include <traits/traits.h>
 #include "traits-unit.h"
 
 /*
