@@ -19,6 +19,6 @@ before_script:
   - mkdir build
   - cd build
   - cmake ..
-  - cp ../run_examples.sh .
+  - cp ../run_tests.sh .
 
-script: make && ./run_examples.sh
+script: make && ./run_tests.sh
