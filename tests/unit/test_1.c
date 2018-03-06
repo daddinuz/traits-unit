@@ -3,7 +3,7 @@
  *
  * Author: daddinuz
  * email:  daddinuz@gmail.com
- * Date:   September 09, 2017 
+ * Date:   March 06, 2018
  */
 
 #include <traits/traits.h>
@@ -13,13 +13,17 @@
  * Define features
  */
 FeatureDefine(TrueMustBeTrue) {
-    (void) traits_context;
+    (void) traits_unit_context;
     assert_true(true);
 }
 
-FeatureDefine(FalseMustBeFalse) {
-    (void) traits_context;
-    assert_false(false);
+FeatureDefine(SkippedFeature) {
+    (void) traits_unit_context;
+    assert_true(false);
+}
+
+FeatureDefine(NotImplementedFeature) {
+    (void) traits_unit_context;
 }
 
 /*
@@ -29,6 +33,7 @@ Describe("ShouldPass",
          Trait(
                  "Boolean",
                  Run(TrueMustBeTrue),
-                 Run(FalseMustBeFalse)
+                 Skip(SkippedFeature),
+                 Todo(NotImplementedFeature)
          )
 )

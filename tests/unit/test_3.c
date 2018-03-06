@@ -3,7 +3,7 @@
  *
  * Author: daddinuz
  * email:  daddinuz@gmail.com
- * Date:   September 09, 2017 
+ * Date:   March 06, 2018
  */
 
 #include <stdlib.h>
@@ -64,11 +64,11 @@ SetupDefine(SetupFalseMustBeFalse) {
  * Define teardowns
  */
 TeardownDefine(TeardownTrueMustBeTrue) {
-    free(traits_context);
+    free(traits_unit_context);
 }
 
 TeardownDefine(TeardownFalseMustBeFalse) {
-    free(traits_context);
+    free(traits_unit_context);
 }
 
 /*
@@ -81,11 +81,11 @@ FixtureDefine(FixtureFalseMustBeFalse, SetupFalseMustBeFalse, TeardownFalseMustB
  * Define features
  */
 FeatureDefine(TrueMustBeTrue) {
-    bool *sut = traits_context;
+    bool *sut = traits_unit_context;
     assert_true(*sut);
 }
 
 FeatureDefine(FalseMustBeFalse) {
-    bool *sut = traits_context;
+    bool *sut = traits_unit_context;
     assert_false(*sut);
 }

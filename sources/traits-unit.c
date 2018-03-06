@@ -3,7 +3,7 @@
  *
  * Author: daddinuz
  * email:  daddinuz@gmail.com
- * Date:   September 02, 2017 
+ * Date:   March 06, 2018
  */
 
 #include <errno.h>
@@ -18,74 +18,48 @@
 #include <sys/wait.h>
 #include "traits-unit.h"
 
-#if defined(__GNUC__) || defined(__clang__)
-#   define TRAITS_UNIT_ATTRIBUTE_FORMAT(x, y)           __attribute__((__format__(__printf__, x, y)))
-#   define TRAITS_UNIT_ATTRIBUTE_FORMAT_NORETURN(x, y)  __attribute__((__format__(__printf__, x, y), __noreturn__))
-#else
-#   define TRAITS_UNIT_ATTRIBUTE_FORMAT(x, y)
-#   define TRAITS_UNIT_ATTRIBUTE_FORMAT_NORETURN(x, y)
+
+/*
+ * Internal macro to disable compiler tricks on unsupported platforms
+ */
+#if !(defined(__GNUC__) || defined(__clang__))
+#define __attribute__(...)
 #endif
 
 /*
  * Some constants
  */
 #define TRAITS_UNIT_OUTPUT_STREAM                       stdout
-#define TRAITS_UNIT_BUFFER_CAPACITY                     (2 << 8)
+#define TRAITS_UNIT_BUFFER_CAPACITY                     1024
 #define TRAITS_UNIT_INDENTATION_STEP                    2
 #define TRAITS_UNIT_INDENTATION_START                   0
 
 /*
- * Forward declare traits subject (this should come from the test file)
+ * Forward declare traits subject (this should come from the test file Describe macro)
  */
 extern traits_unit_subject_t traits_unit_subject;
 
 /*
- * Implements default fixtures from header file
+ * Define private global variables
  */
-SetupDefine(DefaultSetup) {
-    return NULL;
-}
-
-TeardownDefine(DefaultTeardown) {
-    (void) traits_context;
-}
-
-FixtureDefine(DefaultFixture, DefaultSetup, DefaultTeardown);
+jmp_buf __traits_unit_jump_buffer;
+void (*volatile __traits_unit_previous_signal_handler)(int);
 
 /*
- * Internal declarations
+ * Define internal global variables
  */
-static traits_unit_feature_t *global_feature = NULL;
 static void *global_context = NULL;
+static traits_unit_feature_t *global_feature = NULL;
+static volatile sig_atomic_t global_handled_signals_counter = 0;
 
-static void *traits_unit_shared_malloc(size_t size);
-static void traits_unit_shared_free(void *address, size_t size);
-
+/*
+ * Define internal types
+ */
 typedef struct traits_unit_buffer_t {
     size_t _index;
     size_t _capacity;
     char *_content;
 } traits_unit_buffer_t;
-
-static traits_unit_buffer_t *traits_unit_buffer_new(size_t capacity);
-
-static void traits_unit_buffer_read(traits_unit_buffer_t *buffer, int fd);
-
-static char *traits_unit_buffer_get(traits_unit_buffer_t *buffer);
-
-static void traits_unit_buffer_clear(traits_unit_buffer_t *buffer);
-
-static void traits_unit_buffer_delete(traits_unit_buffer_t **buffer);
-
-static void _traits_unit_panic(size_t line, const char *file, const char *fmt, ...)
-TRAITS_UNIT_ATTRIBUTE_FORMAT_NORETURN(3, 4);
-
-static void traits_unit_print(size_t indentation_level, const char *fmt, ...)
-TRAITS_UNIT_ATTRIBUTE_FORMAT(2, 3);
-
-static void _traits_unit_teardown(void);
-
-static void traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context);
 
 typedef struct traits_unit_trait_result_t {
     size_t succeed;
@@ -95,9 +69,6 @@ typedef struct traits_unit_trait_result_t {
     size_t all;
 } traits_unit_trait_result_t;
 
-static traits_unit_trait_result_t
-traits_unit_run_trait(size_t indentation_level, traits_unit_trait_t *trait, traits_unit_buffer_t *buffer);
-
 typedef enum traits_unit_feature_result_t {
     TRAITS_UNIT_FEATURE_RESULT_SUCCEED,
     TRAITS_UNIT_FEATURE_RESULT_SKIPPED,
@@ -105,7 +76,49 @@ typedef enum traits_unit_feature_result_t {
     TRAITS_UNIT_FEATURE_RESULT_TODO,
 } traits_unit_feature_result_t;
 
-static int _traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
+/*
+ * Declare internal functions
+ */
+static void *
+traits_unit_shared_malloc(size_t size);
+
+static void
+traits_unit_shared_free(void *address, size_t size);
+
+static traits_unit_buffer_t *
+traits_unit_buffer_new(size_t capacity);
+
+static void
+traits_unit_buffer_read(traits_unit_buffer_t *buffer, int fd);
+
+static char *
+traits_unit_buffer_get(traits_unit_buffer_t *buffer);
+
+static void
+traits_unit_buffer_clear(traits_unit_buffer_t *buffer);
+
+static void
+traits_unit_buffer_delete(traits_unit_buffer_t **buffer);
+
+static void
+_traits_unit_panic(size_t line, const char *file, const char *fmt, ...)
+__attribute__((__noreturn__, __format__(__printf__, 3, 4)));
+
+static void
+traits_unit_print(size_t indentation_level, const char *fmt, ...)
+__attribute__((__format__(__printf__, 2, 3)));
+
+static void
+_traits_unit_teardown(void);
+
+static void
+traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context);
+
+static traits_unit_trait_result_t
+traits_unit_run_trait(size_t indentation_level, traits_unit_trait_t *trait, traits_unit_buffer_t *buffer);
+
+static int
+_traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
 
 static traits_unit_feature_result_t
 traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
@@ -114,29 +127,57 @@ static void
 traits_unit_report(size_t indentation_level, size_t succeed, size_t skipped, size_t failed, size_t todo, size_t all);
 
 /*
- * Macro helpers
+ * Define internal macros
  */
-#define traits_unit_panic(fmt, ...)                 _traits_unit_panic(__LINE__, __FILE__, fmt, __VA_ARGS__)
-#define traits_unit_newline()                       traits_unit_print(0, "\n")
+#define traits_unit_panic(fmt, ...)     _traits_unit_panic(__LINE__, __FILE__, fmt, __VA_ARGS__)
+#define traits_unit_newline()           traits_unit_print(0, "\n")
 
 /*
- * Implements main
+ * Define public functions
  */
-int main(int argc, char *argv[]) {
+const char *
+traits_unit_version(void) {
+    return (TRAITS_UNIT_VERSION_IS_RELEASE || sizeof(TRAITS_UNIT_VERSION_SUFFIX) <= 1)
+           ?
+           __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_MAJOR) "."
+                   __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_MINOR) "."
+                   __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_PATCH)
+           :
+           __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_MAJOR) "."
+                   __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_MINOR) "."
+                   __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_PATCH) "-"
+                   TRAITS_UNIT_VERSION_SUFFIX;
+}
+
+size_t
+traits_unit_get_handled_signals_counter(void) {
+    if (global_handled_signals_counter < 0) {
+        // this should never happen
+        traits_unit_panic("unexpected handled signals counter value: %ld\n", (long) global_handled_signals_counter);
+    }
+    return (size_t) global_handled_signals_counter;
+}
+
+/*
+ * Define main
+ */
+int
+main(int argc, char *argv[]) {
     bool loaded = true;
     traits_unit_buffer_t *buffer = NULL;
-    traits_unit_trait_t *traits_list[__TRAITS_UNIT_MAX_TRAITS] = {0};
+    traits_unit_trait_t *traits_list[TRAITS_UNIT_MAX_TRAITS] = {0};
     size_t counter_succeed = 0, counter_skipped = 0, counter_failed = 0, counter_todo = 0, counter_all = 0;
     size_t indentation_level = TRAITS_UNIT_INDENTATION_START;
 
     /* Load traits_list */
     if (argc > 1) {
         /* Specific traits must be run */
-        if (argc > __TRAITS_UNIT_MAX_TRAITS) {
+        if (argc > TRAITS_UNIT_MAX_TRAITS) {
             /* Too many traits has been specified, not able to load traits_list */
             loaded = false;
             traits_unit_print(indentation_level, "Too many traits specified\n");
-        } else {
+        }
+        else {
             /* Search for the specified traits and load them into traits_list */
             size_t index = 0;
             traits_unit_trait_t *trait = NULL;
@@ -156,14 +197,16 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
-    } else {
+    }
+    else {
         /* Load all traits present in traits_subject */
-        for (size_t i = 0; i < __TRAITS_UNIT_MAX_TRAITS; i++) {
+        for (size_t i = 0; i < TRAITS_UNIT_MAX_TRAITS; i++) {
             traits_list[i] = &traits_unit_subject.traits[i];
         }
     }
 
     if (loaded) {
+        traits_unit_print(0, "Running traits-unit version %s\n\n", traits_unit_version());
         /* Run features of traits in traits_list */
         traits_unit_trait_t *trait = NULL;
         buffer = traits_unit_buffer_new(TRAITS_UNIT_BUFFER_CAPACITY);
@@ -178,7 +221,8 @@ int main(int argc, char *argv[]) {
             counter_all += trait_result.all;
         }
         indentation_level -= TRAITS_UNIT_INDENTATION_STEP;
-        traits_unit_report(indentation_level, counter_succeed, counter_skipped, counter_failed, counter_todo, counter_all);
+        traits_unit_report(indentation_level, counter_succeed, counter_skipped, counter_failed, counter_todo,
+                           counter_all);
         traits_unit_buffer_delete(&buffer);
     }
 
@@ -186,9 +230,30 @@ int main(int argc, char *argv[]) {
 }
 
 /*
- * Internal implementations
+ * Define private functions
  */
-void *traits_unit_shared_malloc(size_t size) {
+void
+__traits_unit_signal_handler(int signal_id) {
+    global_handled_signals_counter++;
+    signal(signal_id, __traits_unit_previous_signal_handler);
+    siglongjmp(__traits_unit_jump_buffer, 1);
+}
+
+SetupDefine(__TraitsUnitDefaultSetup) {
+    return NULL;
+}
+
+TeardownDefine(__TraitsUnitDefaultTeardown) {
+    (void) traits_unit_context;
+}
+
+FixtureDefine(__TraitsUnitDefaultFixture, __TraitsUnitDefaultSetup, __TraitsUnitDefaultTeardown);
+
+/*
+ * Define internal functions
+ */
+void *
+traits_unit_shared_malloc(size_t size) {
     /* Our memory will be readable and writable */
     int protection = PROT_READ | PROT_WRITE;
 
@@ -208,13 +273,15 @@ void *traits_unit_shared_malloc(size_t size) {
     return memory;
 }
 
-void traits_unit_shared_free(void *address, size_t size) {
+void
+traits_unit_shared_free(void *address, size_t size) {
     if (0 != munmap(address, size)) {
         traits_unit_panic("%s\n", "Unable to unmap memory");
     }
 }
 
-traits_unit_buffer_t *traits_unit_buffer_new(size_t capacity) {
+traits_unit_buffer_t *
+traits_unit_buffer_new(size_t capacity) {
     traits_unit_buffer_t *self = traits_unit_shared_malloc(sizeof(*self));
     if (!self) {
         traits_unit_panic("%s\n", "Out of memory.");
@@ -229,7 +296,8 @@ traits_unit_buffer_t *traits_unit_buffer_new(size_t capacity) {
     return self;
 }
 
-void traits_unit_buffer_read(traits_unit_buffer_t *buffer, int fd) {
+void
+traits_unit_buffer_read(traits_unit_buffer_t *buffer, int fd) {
     assert(buffer);
     FILE *stream = fdopen(fd, "r");
 
@@ -250,25 +318,29 @@ void traits_unit_buffer_read(traits_unit_buffer_t *buffer, int fd) {
     fclose(stream);
 }
 
-char *traits_unit_buffer_get(traits_unit_buffer_t *buffer) {
+char *
+traits_unit_buffer_get(traits_unit_buffer_t *buffer) {
     assert(buffer);
     return buffer->_content;
 }
 
-void traits_unit_buffer_clear(traits_unit_buffer_t *buffer) {
+void
+traits_unit_buffer_clear(traits_unit_buffer_t *buffer) {
     assert(buffer);
     buffer->_index = 0;
     buffer->_content[0] = 0;
 }
 
-void traits_unit_buffer_delete(traits_unit_buffer_t **buffer) {
+void
+traits_unit_buffer_delete(traits_unit_buffer_t **buffer) {
     assert(buffer && *buffer);
     traits_unit_shared_free((*buffer)->_content, (*buffer)->_capacity + 1);
     traits_unit_shared_free(*buffer, sizeof(*buffer));
     *buffer = NULL;
 }
 
-void _traits_unit_panic(size_t line, const char *file, const char *fmt, ...) {
+void
+_traits_unit_panic(size_t line, const char *file, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     fprintf(stderr, "\nAt %s:%zu\nError: %s\n", file, line, strerror(errno));
@@ -278,7 +350,8 @@ void _traits_unit_panic(size_t line, const char *file, const char *fmt, ...) {
     exit(-1);
 }
 
-void traits_unit_print(size_t indentation_level, const char *fmt, ...) {
+void
+traits_unit_print(size_t indentation_level, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     fprintf(TRAITS_UNIT_OUTPUT_STREAM, "%*s", (int) indentation_level, "");
@@ -286,14 +359,16 @@ void traits_unit_print(size_t indentation_level, const char *fmt, ...) {
     va_end(args);
 }
 
-void _traits_unit_teardown(void) {
+void
+_traits_unit_teardown(void) {
     assert(global_feature);
     global_feature->fixture->teardown(global_context);
     global_context = NULL;
     global_feature = NULL;
 }
 
-void traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context) {
+void
+traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context) {
     assert(feature);
     assert(NULL == global_feature);
     assert(NULL == global_context);
@@ -304,7 +379,6 @@ void traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context)
 
 traits_unit_trait_result_t
 traits_unit_run_trait(size_t indentation_level, traits_unit_trait_t *trait, traits_unit_buffer_t *buffer) {
-
     traits_unit_trait_result_t trait_result;
     memset(&trait_result, 0, sizeof(trait_result));
     traits_unit_feature_t *feature = NULL;
@@ -338,7 +412,8 @@ traits_unit_run_trait(size_t indentation_level, traits_unit_trait_t *trait, trai
     return trait_result;
 }
 
-int _traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
+int
+_traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
     pid_t pid;
     int fd, pipe_fd[2], pid_status;
 
@@ -406,7 +481,6 @@ int _traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_uni
 
 traits_unit_feature_result_t
 traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
-
     traits_unit_feature_result_t result = TRAITS_UNIT_FEATURE_RESULT_FAILED;
     traits_unit_print(indentation_level, "Feature: %s... ", feature->feature_name);
     switch (feature->action) {
@@ -416,12 +490,15 @@ traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature
             if (EXIT_SUCCESS == exit_status) {
                 result = TRAITS_UNIT_FEATURE_RESULT_SUCCEED;
                 traits_unit_print(0, "succeed\n");
-            } else {
+            }
+            else {
                 result = TRAITS_UNIT_FEATURE_RESULT_FAILED;
                 if (!WIFEXITED(exit_status)) {
                     if (WIFSIGNALED(exit_status)) {
-                        traits_unit_print(0, "(terminated by signal %d - %s) ", WTERMSIG(exit_status), strsignal(WTERMSIG(exit_status)));
-                    } else {
+                        traits_unit_print(0, "(terminated by signal %d - %s) ", WTERMSIG(exit_status),
+                                          strsignal(WTERMSIG(exit_status)));
+                    }
+                    else {
                         traits_unit_print(0, "(terminated abnormally) ");
                     }
                 }
