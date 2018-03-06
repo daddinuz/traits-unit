@@ -13,17 +13,15 @@
  * Define features
  */
 FeatureDefine(TrueMustBeTrue) {
-    (void) traits_unit_context;
     assert_true(true);
 }
 
 FeatureDefine(SkippedFeature) {
-    (void) traits_unit_context;
     assert_true(false);
 }
 
 FeatureDefine(NotImplementedFeature) {
-    (void) traits_unit_context;
+
 }
 
 /*

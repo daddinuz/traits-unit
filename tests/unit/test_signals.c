@@ -28,7 +28,6 @@ Describe("ShouldPass",
  * Define features
  */
 FeatureDefine(ShouldRaise) {
-    (void) traits_unit_context;
     const size_t handled_signals = traits_unit_get_handled_signals_counter();
 
     traits_unit_with_raises(SIGINT) {

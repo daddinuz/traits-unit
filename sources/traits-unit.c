@@ -48,8 +48,9 @@ void (*volatile __traits_unit_previous_signal_handler)(int);
 /*
  * Define internal global variables
  */
-static void *global_context = NULL;
-static traits_unit_feature_t *global_feature = NULL;
+static volatile void *global_context = NULL;
+static volatile bool global_context_initialized = false;
+static volatile traits_unit_feature_t *global_feature = NULL;
 static volatile sig_atomic_t global_handled_signals_counter = 0;
 
 /*
@@ -112,13 +113,13 @@ static void
 traits_unit_teardown(void);
 
 static void
-traits_unit_register_teardown_on_exit(traits_unit_feature_t *feature, void *context);
+traits_unit_register_teardown_on_exit(void);
 
 static traits_unit_trait_result_t
 traits_unit_run_trait(size_t indentation_level, traits_unit_trait_t *trait, traits_unit_buffer_t *buffer);
 
 static int
-_traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
+traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
 
 static traits_unit_feature_result_t
 traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature, traits_unit_buffer_t *buffer);
@@ -149,11 +150,19 @@ traits_unit_version(void) {
                    TRAITS_UNIT_VERSION_SUFFIX;
 }
 
+void *
+traits_unit_get_context(void) {
+    if (!global_context_initialized) {
+        traits_unit_panic("Unexpected call to %s outside feature-cycle scope\n", __func__);
+    }
+    return (void *) global_context;
+}
+
 size_t
 traits_unit_get_handled_signals_counter(void) {
     if (global_handled_signals_counter < 0) {
         // this should never happen
-        traits_unit_panic("unexpected handled signals counter value: %ld\n", (long) global_handled_signals_counter);
+        traits_unit_panic("Unexpected handled signals counter value: %ld\n", (long) global_handled_signals_counter);
     }
     return (size_t) global_handled_signals_counter;
 }
@@ -221,8 +230,9 @@ main(int argc, char *argv[]) {
             counter_all += trait_result.all;
         }
         indentation_level -= TRAITS_UNIT_INDENTATION_STEP;
-        traits_unit_report(indentation_level, counter_succeed, counter_skipped, counter_failed, counter_todo,
-                           counter_all);
+        traits_unit_report(
+                indentation_level, counter_succeed, counter_skipped, counter_failed, counter_todo, counter_all
+        );
         traits_unit_buffer_delete(&buffer);
     }
 
@@ -244,7 +254,7 @@ SetupDefine(__TraitsUnitDefaultSetup) {
 }
 
 TeardownDefine(__TraitsUnitDefaultTeardown) {
-    (void) traits_unit_context;
+
 }
 
 FixtureDefine(__TraitsUnitDefaultFixture, __TraitsUnitDefaultSetup, __TraitsUnitDefaultTeardown);
@@ -361,19 +371,17 @@ traits_unit_print(size_t indentation_level, const char *fmt, ...) {
 
 void
 traits_unit_teardown(void) {
-    assert(global_feature);
-    global_feature->fixture->teardown(global_context);
+    if (!global_feature) {
+        traits_unit_panic("%s\n", "Unexpected error");
+    }
+    global_feature->fixture->teardown();
+    global_context_initialized = false;
     global_context = NULL;
     global_feature = NULL;
 }
 
 void
-traits_unit_register_teardown_on_exit(traits_unit_feature_t *feature, void *context) {
-    assert(feature);
-    assert(NULL == global_feature);
-    assert(NULL == global_context);
-    global_feature = feature;
-    global_context = context;
+traits_unit_register_teardown_on_exit(void) {
     atexit(traits_unit_teardown);
 }
 
@@ -413,7 +421,7 @@ traits_unit_run_trait(size_t indentation_level, traits_unit_trait_t *trait, trai
 }
 
 int
-_traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
+traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
     pid_t pid;
     int fd, pipe_fd[2], pid_status;
 
@@ -441,14 +449,16 @@ _traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_bu
         /* Redirect STDERR to pipe*/
         dup2(fd, STDERR_FILENO);
 
-        /* Setup context */
-        void *context = feature->fixture->setup();
+        /* Setup globals */
+        global_feature = feature;
+        global_context = feature->fixture->setup();
+        global_context_initialized = true;
 
-        /* Teardown context on exit */
-        traits_unit_register_teardown_on_exit(feature, context);
+        /* Teardown globals on exit */
+        traits_unit_register_teardown_on_exit();
 
         /* Run feature */
-        feature->feature(context);
+        feature->feature();
 
         /* Close fd */
         close(fd);
@@ -481,12 +491,12 @@ _traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_bu
 
 traits_unit_feature_result_t
 traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature, traits_unit_buffer_t *buffer) {
-    traits_unit_feature_result_t result = TRAITS_UNIT_FEATURE_RESULT_FAILED;
+    traits_unit_feature_result_t result;
     traits_unit_print(indentation_level, "Feature: %s... ", feature->feature_name);
     switch (feature->action) {
         case TRAITS_UNIT_ACTION_RUN: {
             traits_unit_buffer_clear(buffer);
-            const int exit_status = _traits_unit_fork_and_run_feature(feature, buffer);
+            const int exit_status = traits_unit_fork_and_run_feature(feature, buffer);
             if (EXIT_SUCCESS == exit_status) {
                 result = TRAITS_UNIT_FEATURE_RESULT_SUCCEED;
                 traits_unit_print(0, "succeed\n");
@@ -495,8 +505,10 @@ traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature
                 result = TRAITS_UNIT_FEATURE_RESULT_FAILED;
                 if (!WIFEXITED(exit_status)) {
                     if (WIFSIGNALED(exit_status)) {
-                        traits_unit_print(0, "(terminated by signal %d - %s) ", WTERMSIG(exit_status),
-                                          strsignal(WTERMSIG(exit_status)));
+                        traits_unit_print(
+                                0, "(terminated by signal %d - %s) ",
+                                WTERMSIG(exit_status), strsignal(WTERMSIG(exit_status))
+                        );
                     }
                     else {
                         traits_unit_print(0, "(terminated abnormally) ");

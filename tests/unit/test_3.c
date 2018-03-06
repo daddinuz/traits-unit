@@ -64,11 +64,11 @@ SetupDefine(SetupFalseMustBeFalse) {
  * Define teardowns
  */
 TeardownDefine(TeardownTrueMustBeTrue) {
-    free(traits_unit_context);
+    free(traits_unit_get_context());
 }
 
 TeardownDefine(TeardownFalseMustBeFalse) {
-    free(traits_unit_context);
+    free(traits_unit_get_context());
 }
 
 /*
@@ -81,11 +81,11 @@ FixtureDefine(FixtureFalseMustBeFalse, SetupFalseMustBeFalse, TeardownFalseMustB
  * Define features
  */
 FeatureDefine(TrueMustBeTrue) {
-    bool *sut = traits_unit_context;
+    bool *sut = traits_unit_get_context();
     assert_true(*sut);
 }
 
 FeatureDefine(FalseMustBeFalse) {
-    bool *sut = traits_unit_context;
+    bool *sut = traits_unit_get_context();
     assert_false(*sut);
 }

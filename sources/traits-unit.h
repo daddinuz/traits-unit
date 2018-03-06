@@ -40,14 +40,14 @@ extern "C" {
  * Types
  */
 typedef void *traits_unit_setup_fn(void);
-typedef void traits_unit_teardown_fn(void *);
+typedef void traits_unit_teardown_fn(void);
 
 typedef struct traits_unit_fixture_t {
     traits_unit_setup_fn *setup;
     traits_unit_teardown_fn *teardown;
 } traits_unit_fixture_t;
 
-typedef void traits_unit_feature_fn(void *traits_unit_context);
+typedef void traits_unit_feature_fn(void);
 
 typedef enum traits_unit_action_t {
     TRAITS_UNIT_ACTION_RUN,
@@ -78,6 +78,9 @@ typedef struct traits_unit_subject_t {
 extern const char *
 traits_unit_version(void);
 
+extern void *
+traits_unit_get_context(void);
+
 extern size_t
 traits_unit_get_handled_signals_counter(void);
 
@@ -97,10 +100,10 @@ main(int argc, char *argv[]);
     void *__TRAITS_UNIT_SETUP_ID(Name)(void)        // NOLINT
 
 #define TeardownDeclare(Name)                   \
-    extern void __TRAITS_UNIT_TEARDOWN_ID(Name)(void *traits_unit_context)
+    extern void __TRAITS_UNIT_TEARDOWN_ID(Name)(void)
 
 #define TeardownDefine(Name)                    \
-    void __TRAITS_UNIT_TEARDOWN_ID(Name)(void *traits_unit_context)
+    void __TRAITS_UNIT_TEARDOWN_ID(Name)(void)
 
 #define FixtureDeclare(Name)                    \
     extern traits_unit_fixture_t __TRAITS_UNIT_FIXTURE_ID(Name)
@@ -109,10 +112,10 @@ main(int argc, char *argv[]);
     traits_unit_fixture_t __TRAITS_UNIT_FIXTURE_ID(Name) = {.setup=__TRAITS_UNIT_SETUP_ID(Setup), .teardown=__TRAITS_UNIT_TEARDOWN_ID(Teardown)}
 
 #define FeatureDeclare(Name)                    \
-    extern void __TRAITS_UNIT_FEATURE_ID(Name)(void *traits_unit_context)
+    extern void __TRAITS_UNIT_FEATURE_ID(Name)(void)
 
 #define FeatureDefine(Name)                     \
-    void __TRAITS_UNIT_FEATURE_ID(Name)(void *traits_unit_context)
+    void __TRAITS_UNIT_FEATURE_ID(Name)(void)
 
 #define Describe(Subject, ...)                  \
     traits_unit_subject_t traits_unit_subject = {.subject=(Subject), .traits={__VA_ARGS__}};

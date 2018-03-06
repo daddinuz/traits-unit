@@ -30,11 +30,9 @@ Describe("ShouldPass",
  * Define features
  */
 FeatureDefine(TrueMustBeTrue) {
-    (void) traits_unit_context;
     assert_true(true);
 }
 
 FeatureDefine(FalseMustBeFalse) {
-    (void) traits_unit_context;
     assert_false(false);
 }
