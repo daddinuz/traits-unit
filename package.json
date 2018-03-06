@@ -13,8 +13,8 @@
     "unit-testing",
     "test-framework"
   ],
-  "dependencies": {
-    "daddinuz/traits": "2.1.0"
+  "development": {
+    "daddinuz/traits": "3.0.0"
   },
   "src": [
     "sources/traits-unit.c",
