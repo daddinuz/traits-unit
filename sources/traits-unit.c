@@ -109,10 +109,10 @@ traits_unit_print(size_t indentation_level, const char *fmt, ...)
 __attribute__((__format__(__printf__, 2, 3)));
 
 static void
-_traits_unit_teardown(void);
+traits_unit_teardown(void);
 
 static void
-traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context);
+traits_unit_register_teardown_on_exit(traits_unit_feature_t *feature, void *context);
 
 static traits_unit_trait_result_t
 traits_unit_run_trait(size_t indentation_level, traits_unit_trait_t *trait, traits_unit_buffer_t *buffer);
@@ -360,7 +360,7 @@ traits_unit_print(size_t indentation_level, const char *fmt, ...) {
 }
 
 void
-_traits_unit_teardown(void) {
+traits_unit_teardown(void) {
     assert(global_feature);
     global_feature->fixture->teardown(global_context);
     global_context = NULL;
@@ -368,13 +368,13 @@ _traits_unit_teardown(void) {
 }
 
 void
-traits_unit_teardown_on_exit(traits_unit_feature_t *feature, void *context) {
+traits_unit_register_teardown_on_exit(traits_unit_feature_t *feature, void *context) {
     assert(feature);
     assert(NULL == global_feature);
     assert(NULL == global_context);
     global_feature = feature;
     global_context = context;
-    atexit(_traits_unit_teardown);
+    atexit(traits_unit_teardown);
 }
 
 traits_unit_trait_result_t
@@ -445,7 +445,7 @@ _traits_unit_fork_and_run_feature(traits_unit_feature_t *feature, traits_unit_bu
         void *context = feature->fixture->setup();
 
         /* Teardown context on exit */
-        traits_unit_teardown_on_exit(feature, context);
+        traits_unit_register_teardown_on_exit(feature, context);
 
         /* Run feature */
         feature->feature(context);
