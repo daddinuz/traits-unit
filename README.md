@@ -71,7 +71,7 @@ You can also provide the name of the specific traits you want to execute when ru
 The framework itself will detect unhandled signals marking the raising feature as failed and reporting back the error.  
 Sometimes you may want to ensure that your code, under certain circumstances, for example illegal arguments or unrecoverable errors, aborts the execution or raises some specific signal to notify the error.  
 In order to do that, traits unit provides an helper macro that will wrap a specific portion of code allowing a specific 
-signal to be raised and incrementing a counter of unhandled signals without terminating the running feature.
+signal to be raised and incrementing a counter of wrapped signals without terminating the running feature.
 
 ```c
 #include <traits.h>
@@ -81,22 +81,22 @@ signal to be raised and incrementing a counter of unhandled signals without term
  * Define features
  */
 FeatureDefine(SignalsHandling) {
-    const size_t handled_signals_counter = traits_unit_get_handled_signals_counter();
+    const size_t wrapped_signals_counter = traits_unit_get_wrapped_signals_counter();
 
-    traits_unit_with_raises(SIGINT) {
+    traits_unit_wraps(SIGINT) {
         raise(SIGINT);
     }
-    assert_equal(handled_signals_counter + 1, traits_unit_get_handled_signals_counter());
+    assert_equal(wrapped_signals_counter + 1, traits_unit_get_wrapped_signals_counter());
 
-    traits_unit_with_raises(SIGABRT) {
+    traits_unit_wraps(SIGABRT) {
         abort();
     }
-    assert_equal(handled_signals_counter + 2, traits_unit_get_handled_signals_counter());
+    assert_equal(wrapped_signals_counter + 2, traits_unit_get_wrapped_signals_counter());
 
-    traits_unit_with_raises(SIGSEGV) {
+    traits_unit_wraps(SIGSEGV) {
         raise(SIGSEGV);
     }
-    assert_equal(handled_signals_counter + 3, traits_unit_get_handled_signals_counter());
+    assert_equal(wrapped_signals_counter + 3, traits_unit_get_wrapped_signals_counter());
 }
 
 /*

@@ -71,7 +71,7 @@ void (*volatile __traits_unit_previous_signal_handler)(int);
 static volatile void *global_context = NULL;
 static volatile bool global_context_initialized = false;
 static volatile traits_unit_feature_t *global_feature = NULL;
-static volatile sig_atomic_t global_handled_signals_counter = 0;
+static volatile sig_atomic_t global_wrapped_signals_counter = 0;
 
 /*
  * Define internal types
@@ -179,12 +179,12 @@ traits_unit_get_context(void) {
 }
 
 size_t
-traits_unit_get_handled_signals_counter(void) {
-    if (global_handled_signals_counter < 0) {
+traits_unit_get_wrapped_signals_counter(void) {
+    if (global_wrapped_signals_counter < 0) {
         // this should never happen
-        traits_unit_panic("Unexpected handled signals counter value: %ld\n", (long) global_handled_signals_counter);
+        traits_unit_panic("Unexpected wrapped signals counter value: %ld\n", (long) global_wrapped_signals_counter);
     }
-    return (size_t) global_handled_signals_counter;
+    return (size_t) global_wrapped_signals_counter;
 }
 
 /*
@@ -265,7 +265,7 @@ main(int argc, char *argv[]) {
  */
 void
 __traits_unit_signal_handler(int signal_id) {
-    global_handled_signals_counter++;
+    global_wrapped_signals_counter++;
     signal(signal_id, __traits_unit_previous_signal_handler);
     siglongjmp(__traits_unit_jump_buffer, 1);
 }

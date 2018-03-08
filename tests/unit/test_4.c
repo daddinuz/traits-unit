@@ -49,20 +49,20 @@ Describe("TraitsUnitFramework",
  * Suppose saved on: features.c
  */
 FeatureDefine(SignalsHandling) {
-    const size_t handled_signals_counter = traits_unit_get_handled_signals_counter();
+    const size_t wrapped_signals_counter = traits_unit_get_wrapped_signals_counter();
 
-    traits_unit_with_raises(SIGINT) {
+    traits_unit_wraps(SIGINT) {
         raise(SIGINT);
     }
-    assert_equal(handled_signals_counter + 1, traits_unit_get_handled_signals_counter());
+    assert_equal(wrapped_signals_counter + 1, traits_unit_get_wrapped_signals_counter());
 
-    traits_unit_with_raises(SIGABRT) {
+    traits_unit_wraps(SIGABRT) {
         abort();
     }
-    assert_equal(handled_signals_counter + 2, traits_unit_get_handled_signals_counter());
+    assert_equal(wrapped_signals_counter + 2, traits_unit_get_wrapped_signals_counter());
 
-    traits_unit_with_raises(SIGSEGV) {
+    traits_unit_wraps(SIGSEGV) {
         raise(SIGSEGV);
     }
-    assert_equal(handled_signals_counter + 3, traits_unit_get_handled_signals_counter());
+    assert_equal(wrapped_signals_counter + 3, traits_unit_get_wrapped_signals_counter());
 }
