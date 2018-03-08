@@ -27,29 +27,33 @@
  */
 
 #include <stdlib.h>
+#include <traits-unit.h>
 #include <traits/traits.h>
-#include "traits-unit.h"
 
 /*
  * Declare setups
+ * Suppose saved on: setups.h
  */
 SetupDeclare(SetupTrueMustBeTrue);
 SetupDeclare(SetupFalseMustBeFalse);
 
 /*
  * Declare teardowns
+ * Suppose saved on: teardowns.h
  */
 TeardownDeclare(TeardownTrueMustBeTrue);
 TeardownDeclare(TeardownFalseMustBeFalse);
 
 /*
  * Declare fixtures
+ * Suppose saved on: fixtures.h
  */
 FixtureDeclare(FixtureTrueMustBeTrue);
 FixtureDeclare(FixtureFalseMustBeFalse);
 
 /*
  * Declare features
+ * Suppose saved on: features.h
  */
 FeatureDeclare(TrueMustBeTrue);
 FeatureDeclare(FalseMustBeFalse);
@@ -57,16 +61,16 @@ FeatureDeclare(FalseMustBeFalse);
 /*
  * Describe our test case
  */
-Describe("ShouldPass",
-         Trait(
-                 "Boolean",
-                 Run(TrueMustBeTrue, FixtureTrueMustBeTrue),
-                 Run(FalseMustBeFalse, FixtureFalseMustBeFalse)
+Describe("TraitsUnitFramework",
+         Trait("ShouldPass",
+               Run(TrueMustBeTrue, FixtureTrueMustBeTrue),
+               Run(FalseMustBeFalse, FixtureFalseMustBeFalse)
          )
 )
 
 /*
  * Define setups
+ * Suppose saved on: setups.c
  */
 SetupDefine(SetupTrueMustBeTrue) {
     bool *context = malloc(sizeof(*context));
@@ -82,6 +86,7 @@ SetupDefine(SetupFalseMustBeFalse) {
 
 /*
  * Define teardowns
+ * Suppose saved on: teardowns.c
  */
 TeardownDefine(TeardownTrueMustBeTrue) {
     free(traits_unit_get_context());
@@ -93,12 +98,14 @@ TeardownDefine(TeardownFalseMustBeFalse) {
 
 /*
  * Define fixtures
+ * Suppose saved on: fixtures.c
  */
 FixtureDefine(FixtureTrueMustBeTrue, SetupTrueMustBeTrue, TeardownTrueMustBeTrue);
 FixtureDefine(FixtureFalseMustBeFalse, SetupFalseMustBeFalse, TeardownFalseMustBeFalse);
 
 /*
  * Define features
+ * Suppose saved on: features.c
  */
 FeatureDefine(TrueMustBeTrue) {
     bool *sut = traits_unit_get_context();

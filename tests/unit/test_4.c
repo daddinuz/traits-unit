@@ -26,116 +26,43 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stdlib.h>
+#include <traits-unit.h>
 #include <traits/traits.h>
-#include "traits-unit.h"
-
-/*
- * Declare setups
- */
-SetupDeclare(SetupStringMustBeString);
-SetupDeclare(SetupTrueMustBeTrue);
-SetupDeclare(SetupFalseMustBeFalse);
-
-/*
- * Declare teardowns
- */
-TeardownDeclare(TeardownStringMustBeString);
-TeardownDeclare(TeardownTrueMustBeTrue);
-TeardownDeclare(TeardownFalseMustBeFalse);
-
-/*
- * Declare fixtures
- */
-FixtureDeclare(FixtureStringMustBeString);
-FixtureDeclare(FixtureTrueMustBeTrue);
-FixtureDeclare(FixtureFalseMustBeFalse);
 
 /*
  * Declare features
+ * Suppose saved on: features.h
  */
-FeatureDeclare(NullMustBeNull);
-FeatureDeclare(StringMustBeString);
-
-FeatureDeclare(TrueMustBeTrue);
-FeatureDeclare(FalseMustBeFalse);
+FeatureDeclare(SignalsHandling);
 
 /*
  * Describe our test case
  */
-Describe("ShouldPass",
-         Trait(
-                 "Pointers",
-                 Run(NullMustBeNull),
-                 Run(StringMustBeString, FixtureStringMustBeString)
-         ),
-         Trait(
-                 "Boolean",
-                 Run(TrueMustBeTrue, FixtureTrueMustBeTrue),
-                 Run(FalseMustBeFalse, FixtureFalseMustBeFalse)
+Describe("TraitsUnitFramework",
+         Trait("ShouldPass",
+               Run(SignalsHandling)
          )
 )
 
 /*
- * Define setups
- */
-SetupDefine(SetupStringMustBeString) {
-    char *context = strdup("Hello World!");
-    return context;
-}
-
-SetupDefine(SetupTrueMustBeTrue) {
-    bool *context = malloc(sizeof(*context));
-    *context = true;
-    return context;
-}
-
-SetupDefine(SetupFalseMustBeFalse) {
-    bool *context = malloc(sizeof(*context));
-    *context = false;
-    return context;
-}
-
-/*
- * Define teardowns
- */
-TeardownDefine(TeardownStringMustBeString) {
-    free(traits_unit_get_context());
-}
-
-TeardownDefine(TeardownTrueMustBeTrue) {
-    free(traits_unit_get_context());
-}
-
-TeardownDefine(TeardownFalseMustBeFalse) {
-    free(traits_unit_get_context());
-}
-
-/*
- * Define fixtures
- */
-FixtureDefine(FixtureStringMustBeString, SetupStringMustBeString, TeardownStringMustBeString);
-FixtureDefine(FixtureTrueMustBeTrue, SetupTrueMustBeTrue, TeardownTrueMustBeTrue);
-FixtureDefine(FixtureFalseMustBeFalse, SetupFalseMustBeFalse, TeardownFalseMustBeFalse);
-
-/*
  * Define features
+ * Suppose saved on: features.c
  */
-FeatureDefine(NullMustBeNull) {
-    assert_null(NULL);
-}
+FeatureDefine(SignalsHandling) {
+    const size_t handled_signals_counter = traits_unit_get_handled_signals_counter();
 
-FeatureDefine(StringMustBeString) {
-    const char *sut = traits_unit_get_context();
-    assert_string_equal("Hello World!", sut);
-}
+    traits_unit_with_raises(SIGINT) {
+        raise(SIGINT);
+    }
+    assert_equal(handled_signals_counter + 1, traits_unit_get_handled_signals_counter());
 
-FeatureDefine(TrueMustBeTrue) {
-    bool *sut = traits_unit_get_context();
-    assert_true(*sut);
-}
+    traits_unit_with_raises(SIGABRT) {
+        abort();
+    }
+    assert_equal(handled_signals_counter + 2, traits_unit_get_handled_signals_counter());
 
-FeatureDefine(FalseMustBeFalse) {
-    bool *sut = traits_unit_get_context();
-    assert_false(*sut);
+    traits_unit_with_raises(SIGSEGV) {
+        raise(SIGSEGV);
+    }
+    assert_equal(handled_signals_counter + 3, traits_unit_get_handled_signals_counter());
 }

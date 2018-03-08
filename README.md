@@ -11,7 +11,101 @@ Each test has its own **separate address space**, so that assertion failures, si
 
 Even if designed to work with [traits](https://github.com/daddinuz/traits), the framework itself does not
 provide any assertions library so that you can choose the one you prefer that satisfies those requirements:
+ 
  * print error messages on **stderr**.
  * terminate the process calling **exit** from stdlib in case of assertion errors.
 
-See the `tests` folder for an overview of the framework.
+### Quick Overview
+
+#### The most basic test
+
+```c
+#include <traits.h>
+#include <traits-unit.h>
+
+/*
+ * Define features
+ */
+FeatureDefine(TrueMustBeTrue) {
+    assert_true(true);
+}
+
+FeatureDefine(WouldFailNeedsFixes) {
+    assert_true(false);
+}
+
+FeatureDefine(ACoolFeatureThatWillBeImplemented) {
+
+}
+
+FeatureDefine(AnotherCoolFeatureThatWillBeImplemented) {
+
+}
+
+/*
+ * Describe our test case
+ */
+Describe("TraitsUnitFramework",
+         Trait("ShouldPass",
+               Run(TrueMustBeTrue),
+               Skip(WouldFailNeedsFixes)
+         ),
+         Trait("TheBestIsYetToCome",
+               Todo(ACoolFeatureThatWillBeImplemented),
+               Todo(AnotherCoolFeatureThatWillBeImplemented),
+         )
+)
+```
+
+As you can see there's no need to provide a main function, the framework defines it automatically.
+Suppose the above example to be saved in file `traits_overview.c` and compiled with:  
+`gcc traits_overview.c -ltraits-unit -o traits_overview`
+The produced binary, if ran without parameters will execute all the features registered with `Run` of every `Trait` in the `Describe` section.
+You can also provide the name of the specific traits you want to execute when running the binary as follow:  
+`./traits_overview ShouldPass`
+
+#### Controlled signals handling
+
+The framework itself will detect unhandled signals marking the raising feature as failed and reporting back the error.
+Sometimes you may want to ensure that your code, under certain circumstances, for example illegal arguments or 
+unrecoverable errors, aborts the execution or raises some specific signal to notify the error.
+In order to do that, traits unit provides an helper macro that will wrap a specific portion of code allowing a specific 
+signal to be raised and incrementing a counter of unhandled signals without terminating the running feature.
+
+```c
+#include <traits.h>
+#include <traits-unit.h>
+
+/*
+ * Define features
+ */
+FeatureDefine(SignalsHandling) {
+    const size_t handled_signals_counter = traits_unit_get_handled_signals_counter();
+
+    traits_unit_with_raises(SIGINT) {
+        raise(SIGINT);
+    }
+    assert_equal(handled_signals_counter + 1, traits_unit_get_handled_signals_counter());
+
+    traits_unit_with_raises(SIGABRT) {
+        abort();
+    }
+    assert_equal(handled_signals_counter + 2, traits_unit_get_handled_signals_counter());
+
+    traits_unit_with_raises(SIGSEGV) {
+        raise(SIGSEGV);
+    }
+    assert_equal(handled_signals_counter + 3, traits_unit_get_handled_signals_counter());
+}
+
+/*
+ * Describe our test case
+ */
+Describe("TraitsUnitFramework",
+         Trait("ShouldPass",
+               Run(SignalsHandling)
+         )
+)
+``` 
+  
+For a deeper overview of the framework please check the `tests` folder.

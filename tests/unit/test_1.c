@@ -26,8 +26,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <traits-unit.h>
 #include <traits/traits.h>
-#include "traits-unit.h"
 
 /*
  * Define features
@@ -36,22 +36,28 @@ FeatureDefine(TrueMustBeTrue) {
     assert_true(true);
 }
 
-FeatureDefine(SkippedFeature) {
+FeatureDefine(WouldFailNeedsFixes) {
     assert_true(false);
 }
 
-FeatureDefine(NotImplementedFeature) {
+FeatureDefine(ACoolFeatureThatWillBeImplemented) {
+
+}
+
+FeatureDefine(AnotherCoolFeatureThatWillBeImplemented) {
 
 }
 
 /*
  * Describe our test case
  */
-Describe("ShouldPass",
-         Trait(
-                 "Boolean",
-                 Run(TrueMustBeTrue),
-                 Skip(SkippedFeature),
-                 Todo(NotImplementedFeature)
+Describe("TraitsUnitFramework",
+         Trait("ShouldPass",
+               Run(TrueMustBeTrue),
+               Skip(WouldFailNeedsFixes)
+         ),
+         Trait("TheBestIsYetToCome",
+               Todo(ACoolFeatureThatWillBeImplemented),
+               Todo(AnotherCoolFeatureThatWillBeImplemented)
          )
 )
