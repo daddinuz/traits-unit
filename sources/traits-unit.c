@@ -33,7 +33,6 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
-#include <stdbool.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include "traits-unit.h"
@@ -63,16 +62,18 @@ extern traits_unit_subject_t traits_unit_subject;
  * Define private global variables
  */
 jmp_buf __traits_unit_jump_buffer;
-int __traits_unit_signal_handling_attempts = 0;
-void (*volatile __traits_unit_previous_signal_handler)(int);
 
 /*
  * Define internal global variables
  */
-static volatile void *global_context = NULL;
-static volatile bool global_context_initialized = false;
-static volatile traits_unit_feature_t *global_feature = NULL;
+static int global_signal_id = 0;
+static int global_wrapping_attempts = 0;
+static void (*global_previous_signal_handler)(int) = NULL;
 static volatile sig_atomic_t global_wrapped_signals_counter = 0;
+
+static void *global_context = NULL;
+static bool global_context_initialized = false;
+static traits_unit_feature_t *global_feature = NULL;
 
 /*
  * Define internal types
@@ -148,6 +149,9 @@ traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature
 static void
 traits_unit_report(size_t indentation_level, size_t succeed, size_t skipped, size_t failed, size_t todo, size_t all);
 
+static void
+traits_unit_signal_handler(int signal_id);
+
 /*
  * Define internal macros
  */
@@ -208,8 +212,7 @@ main(int argc, char *argv[]) {
             /* Too many traits has been specified, not able to load traits_list */
             loaded = false;
             traits_unit_print(indentation_level, "Too many traits specified\n");
-        }
-        else {
+        } else {
             /* Search for the specified traits and load them into traits_list */
             size_t index = 0;
             traits_unit_trait_t *trait = NULL;
@@ -229,8 +232,7 @@ main(int argc, char *argv[]) {
                 }
             }
         }
-    }
-    else {
+    } else {
         /* Load all traits present in traits_subject */
         for (size_t i = 0; i < TRAITS_UNIT_MAX_TRAITS; i++) {
             traits_list[i] = &traits_unit_subject.traits[i];
@@ -265,10 +267,23 @@ main(int argc, char *argv[]) {
  * Define private functions
  */
 void
-__traits_unit_signal_handler(int signal_id) {
-    global_wrapped_signals_counter++;
-    signal(signal_id, __traits_unit_previous_signal_handler);
-    siglongjmp(__traits_unit_jump_buffer, 1);
+__traits_unit_wraps_enter(int signal_id) {
+    global_signal_id = signal_id;
+    global_wrapping_attempts = 1;
+    global_previous_signal_handler = signal(global_signal_id, traits_unit_signal_handler);
+}
+
+bool
+__traits_unit_wraps_is_done(void) {
+    return 0 != global_wrapping_attempts--;
+}
+
+void
+__traits_unit_wraps_exit(void) {
+    signal(global_signal_id, global_previous_signal_handler);
+    global_previous_signal_handler = NULL;
+    global_wrapping_attempts = 0;
+    global_signal_id = 0;
 }
 
 SetupDefine(__TraitsUnitDefaultSetup) {
@@ -522,8 +537,7 @@ traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature
             if (EXIT_SUCCESS == exit_status) {
                 result = TRAITS_UNIT_FEATURE_RESULT_SUCCEED;
                 traits_unit_print(0, "succeed\n");
-            }
-            else {
+            } else {
                 result = TRAITS_UNIT_FEATURE_RESULT_FAILED;
                 if (!WIFEXITED(exit_status)) {
                     if (WIFSIGNALED(exit_status)) {
@@ -531,8 +545,7 @@ traits_unit_run_feature(size_t indentation_level, traits_unit_feature_t *feature
                                 0, "(terminated by signal %d - %s) ",
                                 WTERMSIG(exit_status), strsignal(WTERMSIG(exit_status))
                         );
-                    }
-                    else {
+                    } else {
                         traits_unit_print(0, "(terminated abnormally) ");
                     }
                 }
@@ -567,4 +580,14 @@ traits_unit_report(size_t indentation_level, size_t succeed, size_t skipped, siz
     traits_unit_print(indentation_level, " Failed: %*zu\n", width, failed);
     traits_unit_print(indentation_level, "   Todo: %*zu\n", width, todo);
     traits_unit_print(indentation_level, "    All: %*zu\n", width, all);
+}
+
+void
+traits_unit_signal_handler(int signal_id) {
+    if (signal_id != global_signal_id) {
+        exit(-1);   // ensure we are handling the same signal
+    }
+    global_wrapped_signals_counter++;
+    signal(signal_id, global_previous_signal_handler);
+    siglongjmp(__traits_unit_jump_buffer, 1);
 }

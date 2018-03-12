@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <stdbool.h>
 
 
 #ifndef TRAITS_UNIT_INCLUDED
@@ -45,10 +46,10 @@ extern "C" {
  */
 #define TRAITS_UNIT_VERSION_MAJOR       2
 #define TRAITS_UNIT_VERSION_MINOR       1
-#define TRAITS_UNIT_VERSION_PATCH       1
+#define TRAITS_UNIT_VERSION_PATCH       2
 #define TRAITS_UNIT_VERSION_SUFFIX      ""
 #define TRAITS_UNIT_VERSION_IS_RELEASE  1
-#define TRAITS_UNIT_VERSION_HEX         0x020101
+#define TRAITS_UNIT_VERSION_HEX         0x020102
 
 /*
  * Constants
@@ -155,11 +156,11 @@ main(int argc, char *argv[]);
 /*
  * Helper macro to handle signals
  */
-#define traits_unit_wraps(xSignal)                                                                  \
-    for (                                                                                           \
-        __traits_unit_signal_handling_attempts = 1,                                                 \
-        __traits_unit_previous_signal_handler = signal((xSignal), __traits_unit_signal_handler);    \
-        !sigsetjmp(__traits_unit_jump_buffer, true) && __traits_unit_signal_handling_attempts--;    \
+#define traits_unit_wraps(xSignalId)                                                    \
+    for (                                                                               \
+        __traits_unit_wraps_enter((xSignalId));                                         \
+        !sigsetjmp(__traits_unit_jump_buffer, true) && __traits_unit_wraps_is_done();   \
+        __traits_unit_wraps_exit()                                                      \
     )
 
 /* [public section end] */
@@ -187,11 +188,15 @@ main(int argc, char *argv[]);
     {.feature_name=__TRAITS_UNIT_TO_STRING(Name), .feature=__TRAITS_UNIT_FEATURE_ID(Name), .fixture=&__TRAITS_UNIT_FIXTURE_ID(Fixture), .action=TRAITS_UNIT_ACTION_TODO}
 
 extern jmp_buf __traits_unit_jump_buffer;
-extern int __traits_unit_signal_handling_attempts;
-extern void (*volatile __traits_unit_previous_signal_handler)(int);
 
 extern void
-__traits_unit_signal_handler(int signal_id);
+__traits_unit_wraps_enter(int signal_id);
+
+extern bool
+__traits_unit_wraps_is_done(void);
+
+extern void
+__traits_unit_wraps_exit(void);
 
 SetupDeclare(__TraitsUnitDefaultSetup);
 TeardownDeclare(__TraitsUnitDefaultTeardown);

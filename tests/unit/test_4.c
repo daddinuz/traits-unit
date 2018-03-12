@@ -52,22 +52,28 @@ FeatureDefine(SignalsHandling) {
     const size_t wrapped_signals_counter = traits_unit_get_wrapped_signals_counter();
 
     traits_unit_wraps(SIGINT) {
-        /* this code will not raise */
+        // this code will not raise
     }
     assert_equal(wrapped_signals_counter, traits_unit_get_wrapped_signals_counter());
 
-    traits_unit_wraps(SIGINT) {
-        raise(SIGINT);
+    traits_unit_wraps(SIGILL) {
+        printf("Wrapping: %s. ", strsignal(SIGILL));
+        raise(SIGILL);
+        printf("will not reach this line.");
     }
     assert_equal(wrapped_signals_counter + 1, traits_unit_get_wrapped_signals_counter());
 
     traits_unit_wraps(SIGABRT) {
+        printf("Wrapping: %s. ", strsignal(SIGABRT));
         abort();
+        printf("will not reach this line.");
     }
     assert_equal(wrapped_signals_counter + 2, traits_unit_get_wrapped_signals_counter());
 
     traits_unit_wraps(SIGSEGV) {
+        printf("Wrapping: %s. ", strsignal(SIGSEGV));
         raise(SIGSEGV);
+        printf("will not reach this line.");
     }
     assert_equal(wrapped_signals_counter + 3, traits_unit_get_wrapped_signals_counter());
 }
