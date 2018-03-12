@@ -10,10 +10,10 @@ Each test has its own **separate address space**, so that assertion failures, si
 **faults are handled** and reported.
 
 Even if designed to work with [traits](https://github.com/daddinuz/traits), the framework itself does not
-provide any assertions library so that you can choose the one you prefer that satisfies those requirements:
+require or provide any assertions library so that you can choose the one you prefer that satisfies those requirements:
  
  * print error messages on **stderr**.
- * terminate the process calling **exit** from stdlib in case of assertion errors.
+ * terminate the process calling **exit**, **abort** or **raise** a signal in case of error (assert from assert.h is perfectly fine).
 
 ## Quick Overview
 
@@ -84,17 +84,28 @@ FeatureDefine(SignalsHandling) {
     const size_t wrapped_signals_counter = traits_unit_get_wrapped_signals_counter();
 
     traits_unit_wraps(SIGINT) {
-        raise(SIGINT);
+        // this code will not raise
+    }
+    assert_equal(wrapped_signals_counter, traits_unit_get_wrapped_signals_counter());
+
+    traits_unit_wraps(SIGILL) {
+        printf("Wrapping: %s. ", strsignal(SIGILL));
+        raise(SIGILL);
+        printf("This line won't be reached.");
     }
     assert_equal(wrapped_signals_counter + 1, traits_unit_get_wrapped_signals_counter());
 
     traits_unit_wraps(SIGABRT) {
+        printf("Wrapping: %s. ", strsignal(SIGABRT));
         abort();
+        printf("This line won't be reached.");
     }
     assert_equal(wrapped_signals_counter + 2, traits_unit_get_wrapped_signals_counter());
 
     traits_unit_wraps(SIGSEGV) {
+        printf("Wrapping: %s. ", strsignal(SIGSEGV));
         raise(SIGSEGV);
+        printf("This line won't be reached.");
     }
     assert_equal(wrapped_signals_counter + 3, traits_unit_get_wrapped_signals_counter());
 }
