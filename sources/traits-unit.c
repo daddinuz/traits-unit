@@ -63,6 +63,7 @@ extern traits_unit_subject_t traits_unit_subject;
  * Define private global variables
  */
 jmp_buf __traits_unit_jump_buffer;
+int __traits_unit_signal_handling_attempts = 0;
 void (*volatile __traits_unit_previous_signal_handler)(int);
 
 /*

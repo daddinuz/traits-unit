@@ -45,10 +45,10 @@ extern "C" {
  */
 #define TRAITS_UNIT_VERSION_MAJOR       2
 #define TRAITS_UNIT_VERSION_MINOR       1
-#define TRAITS_UNIT_VERSION_PATCH       0
+#define TRAITS_UNIT_VERSION_PATCH       1
 #define TRAITS_UNIT_VERSION_SUFFIX      ""
 #define TRAITS_UNIT_VERSION_IS_RELEASE  1
-#define TRAITS_UNIT_VERSION_HEX         0x020100
+#define TRAITS_UNIT_VERSION_HEX         0x020101
 
 /*
  * Constants
@@ -157,8 +157,9 @@ main(int argc, char *argv[]);
  */
 #define traits_unit_wraps(xSignal)                                                                  \
     for (                                                                                           \
+        __traits_unit_signal_handling_attempts = 1,                                                 \
         __traits_unit_previous_signal_handler = signal((xSignal), __traits_unit_signal_handler);    \
-        !sigsetjmp(__traits_unit_jump_buffer, true);                                                \
+        !sigsetjmp(__traits_unit_jump_buffer, true) && __traits_unit_signal_handling_attempts--;    \
     )
 
 /* [public section end] */
@@ -186,6 +187,7 @@ main(int argc, char *argv[]);
     {.feature_name=__TRAITS_UNIT_TO_STRING(Name), .feature=__TRAITS_UNIT_FEATURE_ID(Name), .fixture=&__TRAITS_UNIT_FIXTURE_ID(Fixture), .action=TRAITS_UNIT_ACTION_TODO}
 
 extern jmp_buf __traits_unit_jump_buffer;
+extern int __traits_unit_signal_handling_attempts;
 extern void (*volatile __traits_unit_previous_signal_handler)(int);
 
 extern void
