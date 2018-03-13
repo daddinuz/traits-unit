@@ -46,16 +46,16 @@ extern "C" {
  */
 #define TRAITS_UNIT_VERSION_MAJOR       2
 #define TRAITS_UNIT_VERSION_MINOR       1
-#define TRAITS_UNIT_VERSION_PATCH       3
+#define TRAITS_UNIT_VERSION_PATCH       4
 #define TRAITS_UNIT_VERSION_SUFFIX      ""
 #define TRAITS_UNIT_VERSION_IS_RELEASE  1
-#define TRAITS_UNIT_VERSION_HEX         0x020103
+#define TRAITS_UNIT_VERSION_HEX         0x020104
 
 /*
  * Constants
  */
-#define TRAITS_UNIT_MAX_TRAITS          (32 + 1)
-#define TRAITS_UNIT_MAX_FEATURES        (128 + 1)
+#define TRAITS_UNIT_MAX_TRAITS          96
+#define TRAITS_UNIT_MAX_FEATURES        64
 
 /*
  * Types
