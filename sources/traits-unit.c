@@ -268,6 +268,7 @@ main(int argc, char *argv[]) {
  */
 void
 __traits_unit_wraps_enter(int signal_id) {
+    fflush(TRAITS_UNIT_OUTPUT_STREAM);
     global_signal_id = signal_id;
     global_wrapping_attempts = 1;
     global_previous_signal_handler = signal(global_signal_id, traits_unit_signal_handler);
@@ -280,6 +281,7 @@ __traits_unit_wraps_is_done(void) {
 
 void
 __traits_unit_wraps_exit(void) {
+    fflush(TRAITS_UNIT_OUTPUT_STREAM);
     signal(global_signal_id, global_previous_signal_handler);
     global_previous_signal_handler = NULL;
     global_wrapping_attempts = 0;
@@ -586,6 +588,7 @@ traits_unit_report(size_t indentation_level, size_t succeed, size_t skipped, siz
 
 void
 traits_unit_signal_handler(int signal_id) {
+    fflush(TRAITS_UNIT_OUTPUT_STREAM);
     if (signal_id != global_signal_id) {
         exit(-1);   // ensure we are handling the same signal
     }
