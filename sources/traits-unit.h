@@ -46,10 +46,10 @@ extern "C" {
  */
 #define TRAITS_UNIT_VERSION_MAJOR       2
 #define TRAITS_UNIT_VERSION_MINOR       1
-#define TRAITS_UNIT_VERSION_PATCH       2
+#define TRAITS_UNIT_VERSION_PATCH       3
 #define TRAITS_UNIT_VERSION_SUFFIX      ""
 #define TRAITS_UNIT_VERSION_IS_RELEASE  1
-#define TRAITS_UNIT_VERSION_HEX         0x020102
+#define TRAITS_UNIT_VERSION_HEX         0x020103
 
 /*
  * Constants

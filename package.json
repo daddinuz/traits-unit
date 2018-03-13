@@ -1,7 +1,7 @@
 {
   "name": "traits-unit",
   "repo": "daddinuz/traits-unit",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "license": "MIT",
   "description": "Unittest framework written in C99.",
   "keywords": [

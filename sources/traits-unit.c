@@ -180,7 +180,7 @@ traits_unit_get_context(void) {
     if (!global_context_initialized) {
         traits_unit_panic("Unexpected call to %s outside feature-cycle scope\n", __func__);
     }
-    return (void *) global_context;
+    return global_context;
 }
 
 size_t
@@ -332,6 +332,7 @@ traits_unit_buffer_new(size_t capacity) {
     traits_unit_buffer_t *self = traits_unit_shared_malloc(sizeof(*self));
     if (!self) {
         traits_unit_panic("%s\n", "Out of memory.");
+        abort(); // not needed just to quiet analyzer
     }
     self->_content = traits_unit_shared_malloc(capacity + 1);
     if (!self->_content) {
@@ -357,9 +358,10 @@ traits_unit_buffer_read(traits_unit_buffer_t *buffer, int fd) {
     buffer->_index += fread(
             buffer->_content + buffer->_index,
             sizeof(buffer->_content[0]),
-            buffer->_capacity - buffer->_index,
+            (buffer->_index >= buffer->_capacity) ? 0 : buffer->_capacity - buffer->_index,
             stream
     );
+    buffer->_content[buffer->_index] = 0;
 
     /* Close the stream */
     fclose(stream);
