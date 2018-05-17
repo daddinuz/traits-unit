@@ -45,11 +45,11 @@ extern "C" {
  * Versioning
  */
 #define TRAITS_UNIT_VERSION_MAJOR       2
-#define TRAITS_UNIT_VERSION_MINOR       1
-#define TRAITS_UNIT_VERSION_PATCH       5
+#define TRAITS_UNIT_VERSION_MINOR       2
+#define TRAITS_UNIT_VERSION_PATCH       0
 #define TRAITS_UNIT_VERSION_SUFFIX      ""
 #define TRAITS_UNIT_VERSION_IS_RELEASE  1
-#define TRAITS_UNIT_VERSION_HEX         0x020105
+#define TRAITS_UNIT_VERSION_HEX         0x020200
 
 /*
  * Constants

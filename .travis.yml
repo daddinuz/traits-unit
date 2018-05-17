@@ -1,5 +1,5 @@
-dist: trusty
 language: c
+dist: trusty
 
 compiler:
   - gcc
@@ -19,6 +19,5 @@ before_script:
   - mkdir build
   - cd build
   - cmake ..
-  - cp ../run_tests.sh .
 
-script: make && ./run_tests.sh
+script: make && make test
