@@ -33,8 +33,8 @@
  * Declare features
  * Suppose saved on: features.h
  */
-FeatureDeclare(TrueMustBeTrue);
-FeatureDeclare(FalseMustBeFalse);
+Feature(TrueMustBeTrue);
+Feature(FalseMustBeFalse);
 
 /*
  * Describe our test case
@@ -50,10 +50,10 @@ Describe("TraitsUnitFramework",
  * Define features
  * Suppose saved on: features.c
  */
-FeatureDefine(TrueMustBeTrue) {
+Feature(TrueMustBeTrue) {
     assert_true(true);
 }
 
-FeatureDefine(FalseMustBeFalse) {
+Feature(FalseMustBeFalse) {
     assert_false(false);
 }

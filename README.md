@@ -26,19 +26,19 @@ The dumbest test ever made
 /*
  * Define features
  */
-FeatureDefine(TrueMustBeTrue) {
+Feature(TrueMustBeTrue) {
     assert_true(true);
 }
 
-FeatureDefine(WouldFailNeedsFixes) {
+Feature(WouldFailNeedsFixes) {
     assert_true(false);
 }
 
-FeatureDefine(ACoolFeatureThatWillBeImplemented) {
+Feature(ACoolFeatureThatWillBeImplemented) {
 
 }
 
-FeatureDefine(AnotherCoolFeatureThatWillBeImplemented) {
+Feature(AnotherCoolFeatureThatWillBeImplemented) {
 
 }
 
@@ -80,7 +80,7 @@ signal to be raised and incrementing a counter of wrapped signals without termin
 /*
  * Define features
  */
-FeatureDefine(SignalsHandling) {
+Feature(SignalsHandling) {
     const size_t wrapped_signals_counter = traits_unit_get_wrapped_signals_counter();
 
     traits_unit_wraps(SIGINT) {

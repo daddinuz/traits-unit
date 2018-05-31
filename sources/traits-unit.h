@@ -26,30 +26,32 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stddef.h>
-#include <setjmp.h>
-#include <signal.h>
-#include <stdbool.h>
-
-
-#ifndef TRAITS_UNIT_INCLUDED
-#define TRAITS_UNIT_INCLUDED
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include <stddef.h>
+#include <signal.h>
+#include <setjmp.h>
+#include <stdbool.h>
+
+#if !(defined(__GNUC__) || defined(__clang__))
+#define __attribute__(...)
+#endif
+
 /* [public section begin] */
 
 /*
- * Versioning
- */
-#define TRAITS_UNIT_VERSION_MAJOR       2
-#define TRAITS_UNIT_VERSION_MINOR       2
+* Versioning
+*/
+#define TRAITS_UNIT_VERSION_MAJOR       3
+#define TRAITS_UNIT_VERSION_MINOR       0
 #define TRAITS_UNIT_VERSION_PATCH       0
 #define TRAITS_UNIT_VERSION_SUFFIX      ""
 #define TRAITS_UNIT_VERSION_IS_RELEASE  1
-#define TRAITS_UNIT_VERSION_HEX         0x020200
+#define TRAITS_UNIT_VERSION_HEX         0x030000
 
 /*
  * Constants
@@ -77,10 +79,10 @@ typedef enum traits_unit_action_t {
 } traits_unit_action_t;
 
 typedef struct traits_unit_feature_t {
-    traits_unit_action_t action;
     const char *feature_name;
     traits_unit_fixture_t *fixture;
     traits_unit_feature_fn *feature;
+    traits_unit_action_t action;
 } traits_unit_feature_t;
 
 typedef struct traits_unit_trait_t {
@@ -114,29 +116,20 @@ main(int argc, char *argv[]);
 /*
  * Macros
  */
-#define SetupDeclare(Name)                      \
-    extern void *__TRAITS_UNIT_SETUP_ID(Name)(void) // NOLINT
-
-#define SetupDefine(Name)                       \
+#define Setup(Name)                       \
     void *__TRAITS_UNIT_SETUP_ID(Name)(void)        // NOLINT
 
-#define TeardownDeclare(Name)                   \
-    extern void __TRAITS_UNIT_TEARDOWN_ID(Name)(void)
-
-#define TeardownDefine(Name)                    \
+#define Teardown(Name)                    \
     void __TRAITS_UNIT_TEARDOWN_ID(Name)(void)
 
-#define FixtureDeclare(Name)                    \
+#define Feature(Name)                     \
+    void __TRAITS_UNIT_FEATURE_ID(Name)(void)
+
+#define Fixture(Name)                    \
     extern traits_unit_fixture_t __TRAITS_UNIT_FIXTURE_ID(Name)
 
-#define FixtureDefine(Name, Setup, Teardown)    \
+#define FixtureImplements(Name, Setup, Teardown)    \
     traits_unit_fixture_t __TRAITS_UNIT_FIXTURE_ID(Name) = {.setup=__TRAITS_UNIT_SETUP_ID(Setup), .teardown=__TRAITS_UNIT_TEARDOWN_ID(Teardown)}
-
-#define FeatureDeclare(Name)                    \
-    extern void __TRAITS_UNIT_FEATURE_ID(Name)(void)
-
-#define FeatureDefine(Name)                     \
-    void __TRAITS_UNIT_FEATURE_ID(Name)(void)
 
 #define Describe(Subject, ...)                  \
     traits_unit_subject_t traits_unit_subject = {.subject=(Subject), .traits={__VA_ARGS__}};
@@ -198,14 +191,10 @@ __traits_unit_wraps_is_done(void);
 extern void
 __traits_unit_wraps_exit(void);
 
-SetupDeclare(__TraitsUnitDefaultSetup);
-TeardownDeclare(__TraitsUnitDefaultTeardown);
-FixtureDeclare(__TraitsUnitDefaultFixture);
+Fixture(__TraitsUnitDefaultFixture);
 
 /* [private section end] */
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* TRAITS_UNIT_INCLUDED */

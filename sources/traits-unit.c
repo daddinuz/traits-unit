@@ -37,7 +37,6 @@
 #include <sys/wait.h>
 #include "traits-unit.h"
 
-
 /*
  * Internal macro to disable compiler tricks on unsupported platforms
  */
@@ -166,13 +165,13 @@ traits_unit_version(void) {
     return (TRAITS_UNIT_VERSION_IS_RELEASE || sizeof(TRAITS_UNIT_VERSION_SUFFIX) <= 1)
            ?
            __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_MAJOR) "."
-                   __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_MINOR) "."
-                   __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_PATCH)
+           __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_MINOR) "."
+           __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_PATCH)
            :
            __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_MAJOR) "."
-                   __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_MINOR) "."
-                   __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_PATCH) "-"
-                   TRAITS_UNIT_VERSION_SUFFIX;
+           __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_MINOR) "."
+           __TRAITS_UNIT_TO_STRING(TRAITS_UNIT_VERSION_PATCH) "-"
+           TRAITS_UNIT_VERSION_SUFFIX;
 }
 
 void *
@@ -288,15 +287,15 @@ __traits_unit_wraps_exit(void) {
     global_signal_id = 0;
 }
 
-SetupDefine(__TraitsUnitDefaultSetup) {
+Setup(__TraitsUnitDefaultSetup) {
     return NULL;
 }
 
-TeardownDefine(__TraitsUnitDefaultTeardown) {
+Teardown(__TraitsUnitDefaultTeardown) {
 
 }
 
-FixtureDefine(__TraitsUnitDefaultFixture, __TraitsUnitDefaultSetup, __TraitsUnitDefaultTeardown);
+FixtureImplements(__TraitsUnitDefaultFixture, __TraitsUnitDefaultSetup, __TraitsUnitDefaultTeardown);
 
 /*
  * Define internal functions

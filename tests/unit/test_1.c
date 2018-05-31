@@ -32,19 +32,19 @@
 /*
  * Define features
  */
-FeatureDefine(TrueMustBeTrue) {
+Feature(TrueMustBeTrue) {
     assert_true(true);
 }
 
-FeatureDefine(WouldFailNeedsFixes) {
+Feature(WouldFailNeedsFixes) {
     assert_true(false);
 }
 
-FeatureDefine(ACoolFeatureThatWillBeImplemented) {
+Feature(ACoolFeatureThatWillBeImplemented) {
 
 }
 
-FeatureDefine(AnotherCoolFeatureThatWillBeImplemented) {
+Feature(AnotherCoolFeatureThatWillBeImplemented) {
 
 }
 

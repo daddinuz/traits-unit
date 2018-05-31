@@ -33,7 +33,7 @@
  * Declare features
  * Suppose saved on: features.h
  */
-FeatureDeclare(SignalsHandling);
+Feature(SignalsHandling);
 
 /*
  * Describe our test case
@@ -48,7 +48,7 @@ Describe("TraitsUnitFramework",
  * Define features
  * Suppose saved on: features.c
  */
-FeatureDefine(SignalsHandling) {
+Feature(SignalsHandling) {
     const size_t wrapped_signals_counter = traits_unit_get_wrapped_signals_counter();
 
     traits_unit_wraps(SIGINT) {

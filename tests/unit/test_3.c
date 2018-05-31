@@ -34,29 +34,29 @@
  * Declare setups
  * Suppose saved on: setups.h
  */
-SetupDeclare(SetupTrueMustBeTrue);
-SetupDeclare(SetupFalseMustBeFalse);
+Setup(SetupTrueMustBeTrue);
+Setup(SetupFalseMustBeFalse);
 
 /*
  * Declare teardowns
  * Suppose saved on: teardowns.h
  */
-TeardownDeclare(TeardownTrueMustBeTrue);
-TeardownDeclare(TeardownFalseMustBeFalse);
+Teardown(TeardownTrueMustBeTrue);
+Teardown(TeardownFalseMustBeFalse);
 
 /*
  * Declare fixtures
  * Suppose saved on: fixtures.h
  */
-FixtureDeclare(FixtureTrueMustBeTrue);
-FixtureDeclare(FixtureFalseMustBeFalse);
+Fixture(FixtureTrueMustBeTrue);
+Fixture(FixtureFalseMustBeFalse);
 
 /*
  * Declare features
  * Suppose saved on: features.h
  */
-FeatureDeclare(TrueMustBeTrue);
-FeatureDeclare(FalseMustBeFalse);
+Feature(TrueMustBeTrue);
+Feature(FalseMustBeFalse);
 
 /*
  * Describe our test case
@@ -72,13 +72,13 @@ Describe("TraitsUnitFramework",
  * Define setups
  * Suppose saved on: setups.c
  */
-SetupDefine(SetupTrueMustBeTrue) {
+Setup(SetupTrueMustBeTrue) {
     bool *context = malloc(sizeof(*context));
     *context = true;
     return context;
 }
 
-SetupDefine(SetupFalseMustBeFalse) {
+Setup(SetupFalseMustBeFalse) {
     bool *context = malloc(sizeof(*context));
     *context = false;
     return context;
@@ -88,11 +88,11 @@ SetupDefine(SetupFalseMustBeFalse) {
  * Define teardowns
  * Suppose saved on: teardowns.c
  */
-TeardownDefine(TeardownTrueMustBeTrue) {
+Teardown(TeardownTrueMustBeTrue) {
     free(traits_unit_get_context());
 }
 
-TeardownDefine(TeardownFalseMustBeFalse) {
+Teardown(TeardownFalseMustBeFalse) {
     free(traits_unit_get_context());
 }
 
@@ -100,19 +100,19 @@ TeardownDefine(TeardownFalseMustBeFalse) {
  * Define fixtures
  * Suppose saved on: fixtures.c
  */
-FixtureDefine(FixtureTrueMustBeTrue, SetupTrueMustBeTrue, TeardownTrueMustBeTrue);
-FixtureDefine(FixtureFalseMustBeFalse, SetupFalseMustBeFalse, TeardownFalseMustBeFalse);
+FixtureImplements(FixtureTrueMustBeTrue, SetupTrueMustBeTrue, TeardownTrueMustBeTrue);
+FixtureImplements(FixtureFalseMustBeFalse, SetupFalseMustBeFalse, TeardownFalseMustBeFalse);
 
 /*
  * Define features
  * Suppose saved on: features.c
  */
-FeatureDefine(TrueMustBeTrue) {
+Feature(TrueMustBeTrue) {
     bool *sut = traits_unit_get_context();
     assert_true(*sut);
 }
 
-FeatureDefine(FalseMustBeFalse) {
+Feature(FalseMustBeFalse) {
     bool *sut = traits_unit_get_context();
     assert_false(*sut);
 }
