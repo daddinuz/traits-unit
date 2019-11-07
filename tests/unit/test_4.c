@@ -1,8 +1,7 @@
 /*
- * Author: daddinuz
- * email:  daddinuz@gmail.com
+ * The MIT License (MIT)
  *
- * Copyright (c) 2018 Davide Di Carlo
+ * Copyright (c) 2019 Davide Di Carlo
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -49,31 +48,24 @@ Describe("TraitsUnitFramework",
  * Suppose saved on: features.c
  */
 Feature(SignalsHandling) {
-    const size_t wrapped_signals_counter = traits_unit_get_wrapped_signals_counter();
+    const size_t wrappedSignalsCounter = traitsUnit_getWrappedSignalsCounter();
+    assert_equal(wrappedSignalsCounter, traitsUnit_getWrappedSignalsCounter());
 
-    traits_unit_wraps(SIGINT) {
-        // this code will not raise
-    }
-    assert_equal(wrapped_signals_counter, traits_unit_get_wrapped_signals_counter());
-
-    traits_unit_wraps(SIGILL) {
+    traitsUnit_wrap(SIGILL) {
         printf("Wrapping: %s. ", strsignal(SIGILL));
         raise(SIGILL);
-        printf("This line won't be reached.");
     }
-    assert_equal(wrapped_signals_counter + 1, traits_unit_get_wrapped_signals_counter());
+    assert_equal(wrappedSignalsCounter + 1, traitsUnit_getWrappedSignalsCounter());
 
-    traits_unit_wraps(SIGABRT) {
+    traitsUnit_wrap(SIGABRT) {
         printf("Wrapping: %s. ", strsignal(SIGABRT));
         abort();
-        printf("This line won't be reached.");
     }
-    assert_equal(wrapped_signals_counter + 2, traits_unit_get_wrapped_signals_counter());
+    assert_equal(wrappedSignalsCounter + 2, traitsUnit_getWrappedSignalsCounter());
 
-    traits_unit_wraps(SIGSEGV) {
+    traitsUnit_wrap(SIGSEGV) {
         printf("Wrapping: %s. ", strsignal(SIGSEGV));
         raise(SIGSEGV);
-        printf("This line won't be reached.");
     }
-    assert_equal(wrapped_signals_counter + 3, traits_unit_get_wrapped_signals_counter());
+    assert_equal(wrappedSignalsCounter + 3, traitsUnit_getWrappedSignalsCounter());
 }

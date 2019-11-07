@@ -68,10 +68,10 @@ You can also provide the name of the specific traits you want to execute when ru
 
 #### Controlled signals handling
 
-The framework itself will detect unhandled signals marking the raising feature as failed and reporting back the error.  
+The framework itself will detect unhandled signals marking the raising call as failed and reporting back the error.  
 Sometimes you may want to ensure that your code, under certain circumstances, for example illegal arguments or unrecoverable errors, aborts the execution or raises some specific signal to notify the error.  
 In order to do that, traits unit provides an helper macro that will wrap a specific portion of code allowing a specific 
-signal to be raised and incrementing a counter of wrapped signals without terminating the running feature.
+signal to be raised and incrementing a counter of wrapped signals without terminating the running call.
 
 ```c
 #include <traits.h>
@@ -81,33 +81,33 @@ signal to be raised and incrementing a counter of wrapped signals without termin
  * Define features
  */
 Feature(SignalsHandling) {
-    const size_t wrapped_signals_counter = traits_unit_get_wrapped_signals_counter();
+    const size_t wrapped_signals_counter = traitsUnit_getWrappedSignalsCounter();
 
-    traits_unit_wraps(SIGINT) {
+    traitsUnit_wrap(SIGINT) {
         // this code will not raise
     }
-    assert_equal(wrapped_signals_counter, traits_unit_get_wrapped_signals_counter());
+    assert_equal(wrapped_signals_counter, traitsUnit_getWrappedSignalsCounter());
 
-    traits_unit_wraps(SIGILL) {
+    traitsUnit_wrap(SIGILL) {
         printf("Wrapping: %s. ", strsignal(SIGILL));
         raise(SIGILL);
         printf("This line won't be reached.");
     }
-    assert_equal(wrapped_signals_counter + 1, traits_unit_get_wrapped_signals_counter());
+    assert_equal(wrapped_signals_counter + 1, traitsUnit_getWrappedSignalsCounter());
 
-    traits_unit_wraps(SIGABRT) {
+    traitsUnit_wrap(SIGABRT) {
         printf("Wrapping: %s. ", strsignal(SIGABRT));
         abort();
         printf("This line won't be reached.");
     }
-    assert_equal(wrapped_signals_counter + 2, traits_unit_get_wrapped_signals_counter());
+    assert_equal(wrapped_signals_counter + 2, traitsUnit_getWrappedSignalsCounter());
 
-    traits_unit_wraps(SIGSEGV) {
+    traitsUnit_wrap(SIGSEGV) {
         printf("Wrapping: %s. ", strsignal(SIGSEGV));
         raise(SIGSEGV);
         printf("This line won't be reached.");
     }
-    assert_equal(wrapped_signals_counter + 3, traits_unit_get_wrapped_signals_counter());
+    assert_equal(wrapped_signals_counter + 3, traitsUnit_getWrappedSignalsCounter());
 }
 
 /*

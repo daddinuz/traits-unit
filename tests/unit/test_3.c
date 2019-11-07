@@ -1,8 +1,7 @@
 /*
- * Author: daddinuz
- * email:  daddinuz@gmail.com
+ * The MIT License (MIT)
  *
- * Copyright (c) 2018 Davide Di Carlo
+ * Copyright (c) 2019 Davide Di Carlo
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -89,11 +88,11 @@ Setup(SetupFalseMustBeFalse) {
  * Suppose saved on: teardowns.c
  */
 Teardown(TeardownTrueMustBeTrue) {
-    free(traits_unit_get_context());
+    free(traitsUnit_getContext());
 }
 
 Teardown(TeardownFalseMustBeFalse) {
-    free(traits_unit_get_context());
+    free(traitsUnit_getContext());
 }
 
 /*
@@ -108,11 +107,11 @@ FixtureImplements(FixtureFalseMustBeFalse, SetupFalseMustBeFalse, TeardownFalseM
  * Suppose saved on: features.c
  */
 Feature(TrueMustBeTrue) {
-    bool *sut = traits_unit_get_context();
+    bool *sut = traitsUnit_getContext();
     assert_true(*sut);
 }
 
 Feature(FalseMustBeFalse) {
-    bool *sut = traits_unit_get_context();
+    bool *sut = traitsUnit_getContext();
     assert_false(*sut);
 }
