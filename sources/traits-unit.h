@@ -116,10 +116,10 @@ extern int main(int argc, char *argv[]);
 /*
  * Helper macro to handle signals
  */
-#define traitsUnit_wrap(signalId)                                                               \
-    for (                                                                                       \
-        struct __TraitsUnitWrapper wrapper = __TraitsUnitWrapper_new((signalId));               \
-        !sigsetjmp(__traitsUnitJumpBuffer, 1) || (__TraitsUnitWrapper_delete(&wrapper), false); \
+#define traitsUnit_wrap(signalId)                                                       \
+    for (                                                                               \
+        struct __TraitsUnitWrapper wrapper = __TraitsUnitWrapper_new((signalId));       \
+        !sigsetjmp(__traitsUnitJumpBuffer, 1) && __TraitsUnitWrapper_update(&wrapper);  \
     )
 
 /* [public section end] */
@@ -145,12 +145,13 @@ extern jmp_buf __traitsUnitJumpBuffer;
 struct __TraitsUnitWrapper {
     void *pimpl;
     int signalId;
+    unsigned calls;
 };
 
 extern struct __TraitsUnitWrapper __TraitsUnitWrapper_new(int signalId)
 __attribute__((__warn_unused_result__));
 
-extern void __TraitsUnitWrapper_delete(struct __TraitsUnitWrapper *self)
+extern bool __TraitsUnitWrapper_update(struct __TraitsUnitWrapper *self)
 __attribute__((__nonnull__));
 
 Fixture(__TraitsUnitDefaultFixture);

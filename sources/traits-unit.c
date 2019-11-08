@@ -238,11 +238,16 @@ struct __TraitsUnitWrapper __TraitsUnitWrapper_new(const int signalId) {
     return (struct __TraitsUnitWrapper) {.pimpl=handler, .signalId=signalId};
 }
 
-void __TraitsUnitWrapper_delete(struct __TraitsUnitWrapper *const self) {
+bool __TraitsUnitWrapper_update(struct __TraitsUnitWrapper *const self) {
     assert(NULL != self);
-    sigaction(self->signalId, &globalDefaultSignalHandler, NULL);
-    fflush(traitsUnitStream);
-    free(self->pimpl);
+    if (self->calls++ >= 1) {
+        sigaction(self->signalId, &globalDefaultSignalHandler, NULL);
+        fflush(traitsUnitStream);
+        free(self->pimpl);
+        return false;
+    } else {
+        return true;
+    }
 }
 
 Setup(__TraitsUnitDefaultSetup) {
