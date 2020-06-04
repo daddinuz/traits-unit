@@ -25,38 +25,15 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <traits-unit.h>
-#include <traits/traits.h>
+#pragma once
 
-/*
- * Define features
- */
-Feature(TrueMustBeTrue) {
-    assert_true(true);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define stringify_quote(s)      #s
+#define stringify_lazyQuote(s)  stringify_quote(s)
+
+#ifdef __cplusplus
 }
-
-Feature(WouldFailNeedsFixes) {
-    assert_true(false);
-}
-
-Feature(ACoolFeatureThatWillBeImplemented) {
-
-}
-
-Feature(AnotherCoolFeatureThatWillBeImplemented) {
-
-}
-
-/*
- * Describe our test case
- */
-Describe("TraitsUnitFramework",
-         Trait("ShouldPass",
-               Run(TrueMustBeTrue),
-               Skip(WouldFailNeedsFixes)
-         ),
-         Trait("TheBestIsYetToCome",
-               Skip(ACoolFeatureThatWillBeImplemented),
-               Skip(AnotherCoolFeatureThatWillBeImplemented)
-         )
-)
+#endif

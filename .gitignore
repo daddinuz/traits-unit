@@ -54,6 +54,3 @@ cmake-build-debug/
 
 # log files
 *.log
-
-# dependencies
-deps/
